@@ -61,11 +61,6 @@ uint8_t font[FONT_AMOUNT][FONT_SIZE] = {
 };
 
 typedef struct {
-	void (*_6XNN) (uint32_t *, const uint8_t); /* (&VX, value) - store value at register VX*/
-	void (*_8XY0) (uint32_t *, uint32_t *); /* (&VX, &VY) - store value of VY at VX*/
-} OPCODES;
-
-typedef struct {
 	uint8_t memory[MEMORY_SIZE];
 	uint8_t registers[REGISTERS_AMOUNT];
 	uint8_t gfx[GFX_RESOLUTION];
@@ -76,10 +71,17 @@ typedef struct {
 	uint16_t pc; // program counter
 	uint16_t stack[STACK_SIZE];
 	uint16_t sp; // stack pointer
-	OPCODES *opcodes;
 } CHIP8;
 
-void _6XNN(uint32_t *, const uint8_t);
-void _8XY0(uint32_t *, uint32_t *);
+typedef struct {
+	void (*_6XNN) (CHIP8*, uint16_t opcode); /* (&Vx, NN) - store NN at register Vx*/
+	void (*_7XNN) (CHIP8*, uint16_t opcode); /* (&Vx, NN) - add NN to Vx */
+	void (*_8XY0) (CHIP8*, uint16_t opcode); /* (&Vx, &Vy) - store value of Vy at Vx */
+	void (*_8XY4) (CHIP8*, uint16_t opcode); /* (&Vx, &Vy) - add Vx to Vy, set VF=1 if carry flag, or VF=0 if not */
+} OPCODES;
 
+void _6XNN(CHIP8*, uint16_t opcode);
+void _7XNN(CHIP8*, uint16_t opcode);
+void _8XY0(CHIP8*, uint16_t opcode);
+void _8XY4(CHIP8*, uint16_t opcode);
 #endif
