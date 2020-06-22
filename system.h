@@ -34,6 +34,12 @@
 #define FONT_SIZE 5
 
 #define OPCODE_GROUP(opcode) (opcode & 0xF000)
+#define VX(opcode) (opcode & 0x0FFF) >> 8
+#define VY(opcode) (opcode & 0x00FF) >> 4
+#define NNN(opcode) (opcode & 0x0FFF)
+#define NN(opcode) (opcode & 0x00FF)
+#define N(opcode) (opcode & 0x000F)
+
 
 uint8_t font[FONT_AMOUNT][FONT_SIZE] = {
 	{0xF0, 0x90, 0x90, 0x90, 0xF0}, /* 0 */
@@ -55,6 +61,11 @@ uint8_t font[FONT_AMOUNT][FONT_SIZE] = {
 };
 
 typedef struct {
+	void (*_6XNN) (uint32_t *, const uint8_t); /* (&VX, value) - store value at register VX*/
+	void (*_8XY0) (uint32_t *, uint32_t *); /* (&VX, &VY) - store value of VY at VX*/
+} OPCODES;
+
+typedef struct {
 	uint8_t memory[MEMORY_SIZE];
 	uint8_t registers[REGISTERS_AMOUNT];
 	uint8_t gfx[GFX_RESOLUTION];
@@ -65,6 +76,10 @@ typedef struct {
 	uint16_t pc; // program counter
 	uint16_t stack[STACK_SIZE];
 	uint16_t sp; // stack pointer
+	OPCODES *opcodes;
 } CHIP8;
+
+void _6XNN(uint32_t *, const uint8_t);
+void _8XY0(uint32_t *, uint32_t *);
 
 #endif
