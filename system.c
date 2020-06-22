@@ -38,7 +38,12 @@ OPCODES* init_opcodes() {
 	opcodes->_6XNN = _6XNN;
 	opcodes->_7XNN = _7XNN;
 	opcodes->_8XY0 = _8XY0;
+	opcodes->_8XY1 = _8XY1;
+	opcodes->_8XY2 = _8XY2;
+	opcodes->_8XY3 = _8XY3;
 	opcodes->_8XY4 = _8XY4;
+	opcodes->_8XY5 = _8XY5;
+	opcodes->_8XY7 = _8XY7;
 
 	return opcodes;
 }
@@ -58,13 +63,48 @@ void _8XY0(CHIP8* chip8_p, uint16_t opcode) {
 	chip8_p->registers[VX(opcode)] = chip8_p->registers[VY(opcode)];
 }
 
+/** Vx = Vx OR Vy */
+void _8XY1(CHIP8* chip8_p, uint16_t opcode) {
+	chip8_p->registers[VX(opcode)] |= chip8_p->registers[VY(opcode)];
+}
+
+/** Vx = Vx AND Vy */
+void _8XY2(CHIP8* chip8_p, uint16_t opcode) {
+	chip8_p->registers[VX(opcode)] &= chip8_p->registers[VY(opcode)];
+}
+
+/** Vx = Vx XOR Vy */
+void _8XY3(CHIP8* chip8_p, uint16_t opcode) {
+	chip8_p->registers[VX(opcode)] ^= chip8_p->registers[VY(opcode)];
+}
+
 void _8XY4(CHIP8* chip8_p, uint16_t opcode) {	
 	chip8_p->registers[VX(opcode)] += chip8_p->registers[VY(opcode)];
 	/* set VF carry flag if result > 0xFF */
 	if ((uint16_t) (chip8_p->registers[VX(opcode)] + chip8_p->registers[VY(opcode)]) > 0xFF) 	
-		chip8_p->registers[0x0F] = 1;	
+		chip8_p->registers[VF] = 1;	
 	else
-		chip8_p->registers[0x0F] = 0;			
+		chip8_p->registers[VF] = 0;			
+}
+
+void _8XY5(CHIP8* chip8_p, uint16_t opcode)
+{
+	chip8_p->registers[VX(opcode)] -= chip8_p->registers[VY(opcode)];
+	/* set VF carry flag if Vx < Vy */
+	if (chip8_p->registers[VX(opcode)] < chip8_p->registers[VY(opcode)])
+		chip8_p->registers[VF] = 0;
+	else
+		chip8_p->registers[VF] = 1;
+}
+
+void _8XY7(CHIP8* chip8_p, uint16_t opcode)
+{
+	chip8_p->registers[VX(opcode)] = chip8_p->registers[VY(opcode)] - chip8_p->registers[VX(opcode)];
+	/* set VF carry flag if Vy < Vx */
+	if (chip8_p->registers[VY(opcode)] < chip8_p->registers[VX(opcode)])
+		chip8_p->registers[VF] = 0;
+	else
+		chip8_p->registers[VF] = 1;
 }
 
 int free_memory(CHIP8 *chip8_p, OPCODES *opcodes_p) {
@@ -94,6 +134,30 @@ int dump_registers(CHIP8* chip8_p) {
 		printf("V%01X=[%02X]\n", i, chip8_p->registers[i]);
 	}
 
+	return 0;
+}
+
+int debug_registers(CHIP8* chip8_p) {
+
+	printf("[%01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:\%02X]",
+		0, chip8_p->registers[0],
+		1, chip8_p->registers[1],
+		2, chip8_p->registers[2],
+		3, chip8_p->registers[3],
+		4, chip8_p->registers[4],
+		5, chip8_p->registers[5],
+		6, chip8_p->registers[6],
+		7, chip8_p->registers[7],
+		8, chip8_p->registers[8],
+		9, chip8_p->registers[9],
+		10, chip8_p->registers[10],
+		11, chip8_p->registers[11],
+		12, chip8_p->registers[12],
+		13, chip8_p->registers[13],
+		14, chip8_p->registers[14],
+		15, chip8_p->registers[15]
+	);
+	
 	return 0;
 }
 
@@ -151,12 +215,15 @@ int parse_opcodes(CHIP8 *chip8_p, OPCODES* opcodes_p) {
 				sprintf(decoded, "V%01X = V%01X", VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0001) {
+				opcodes_p->_8XY1(chip8_p, opcode);
 				sprintf(decoded, "V%01X = V%01X OR V%01X", VX(opcode), VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0002) {
+				opcodes_p->_8XY2(chip8_p, opcode);
 				sprintf(decoded, "V%01X = V%01X AND V%01X", VX(opcode), VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0003) {
+				opcodes_p->_8XY3(chip8_p, opcode);
 				sprintf(decoded, "V%01X = V%01X XOR V%01X", VX(opcode), VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0004) {				
@@ -164,16 +231,18 @@ int parse_opcodes(CHIP8 *chip8_p, OPCODES* opcodes_p) {
 				sprintf(decoded, "V%01X = V%01X + V%01X", VX(opcode), VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0005) {
+				opcodes_p->_8XY5(chip8_p, opcode);
 				sprintf(decoded, "V%01X = V%01X - V%01X", VX(opcode), VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0006) {
-				sprintf(decoded, "V%01X = V%01X >> 1", VX(opcode), VX(opcode));
+				sprintf(decoded, "V%01X = V%01X >> 1", VX(opcode), VY(opcode));
 			}
 			else if ((opcode & 0x000F) == 0x0007) {
+				opcodes_p->_8XY7(chip8_p, opcode);
 				sprintf(decoded, "V%01X = V%01X - V%01X", VX(opcode), VY(opcode), VX(opcode));
 			}			
 			else if ((opcode & 0x000F) == 0x000E) {
-				sprintf(decoded, "V%01X = V%01X << 1", VX(opcode), VX(opcode));
+				sprintf(decoded, "V%01X = V%01X << 1", VX(opcode), VY(opcode));
 			}
 		}
 		else if (OPCODE_GROUP(opcode) == 0x9000) {
@@ -233,7 +302,10 @@ int parse_opcodes(CHIP8 *chip8_p, OPCODES* opcodes_p) {
 		}
 
 		if (opcode != 0x0000) {
-			printf("[$%04X]: %04X --> %s\n", address, opcode, decoded);
+			
+			printf("[$%04X]: %04X --> %s ", address, opcode, decoded);
+			debug_registers(chip8_p);
+			printf("\n");
 		}
 	}
 	return 0;

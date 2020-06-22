@@ -74,14 +74,24 @@ typedef struct {
 } CHIP8;
 
 typedef struct {
-	void (*_6XNN) (CHIP8*, uint16_t opcode); /* (&Vx, NN) - store NN at register Vx*/
-	void (*_7XNN) (CHIP8*, uint16_t opcode); /* (&Vx, NN) - add NN to Vx */
-	void (*_8XY0) (CHIP8*, uint16_t opcode); /* (&Vx, &Vy) - store value of Vy at Vx */
-	void (*_8XY4) (CHIP8*, uint16_t opcode); /* (&Vx, &Vy) - add Vx to Vy, set VF=1 if carry flag, or VF=0 if not */
+	void (*_6XNN) (CHIP8*, uint16_t); /* (&Vx, NN) - store NN at register Vx*/
+	void (*_7XNN) (CHIP8*, uint16_t); /* (&Vx, NN) - add NN to Vx */
+	void (*_8XY0) (CHIP8*, uint16_t); /* (&Vx, &Vy) - store value of Vy at Vx */
+	void (*_8XY1) (CHIP8*, uint16_t); /* (&Vx, &Vy) - Vx = Vx OR Vy*/
+	void (*_8XY2) (CHIP8*, uint16_t); /* (&Vx, &Vy) - Vx = Vx AND Vy */
+	void (*_8XY3) (CHIP8*, uint16_t); /* (&Vx, &Vy) - Vx = Vx XOR Vy */
+	void (*_8XY4) (CHIP8*, uint16_t); /* (&Vx, &Vy) - add Vx to Vy, set VF=1 if carry flag, or VF=0 if not */
+	void (*_8XY5) (CHIP8*, uint16_t); /* (&Vx, &Vy) - Vx = Vx - Vy, set VF=1 if carry flag, or VF=0 if not */
+	void (*_8XY7) (CHIP8*, uint16_t); /* (&Vx, &Vy) - Vx = Vy - Vx, set VF=1 if carry flag, or VF=0 if not  */
 } OPCODES;
 
-void _6XNN(CHIP8*, uint16_t opcode);
-void _7XNN(CHIP8*, uint16_t opcode);
-void _8XY0(CHIP8*, uint16_t opcode);
-void _8XY4(CHIP8*, uint16_t opcode);
+void _6XNN(CHIP8*, uint16_t);
+void _7XNN(CHIP8*, uint16_t);
+void _8XY0(CHIP8*, uint16_t);
+void _8XY1(CHIP8*, uint16_t);
+void _8XY2(CHIP8*, uint16_t);
+void _8XY3(CHIP8*, uint16_t);
+void _8XY4(CHIP8*, uint16_t);
+void _8XY5(CHIP8*, uint16_t);
+void _8XY7(CHIP8*, uint16_t);
 #endif
