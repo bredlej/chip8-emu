@@ -33,6 +33,8 @@
 #define FONT_AMOUNT 16
 #define FONT_SIZE 5
 
+#define OPCODE_GROUP(opcode) (opcode & 0xF000)
+
 uint8_t font[FONT_AMOUNT][FONT_SIZE] = {
 	{0xF0, 0x90, 0x90, 0x90, 0xF0}, /* 0 */
 	{0x20, 0x60, 0x20, 0x20, 0x70}, /* 1 */
