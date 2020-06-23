@@ -4,117 +4,142 @@
 #include "system.h"
 
 CHIP8 *init_chip8() {
-	CHIP8 *chip8 = malloc(sizeof *chip8);
-	if (chip8 == NULL)
+	CHIP8 *CHIP8_POINTER = malloc(sizeof *CHIP8_POINTER);
+	if (CHIP8_POINTER == NULL)
 		return NULL;	
 	
 	/* clear whole memory */
 	for (int i = 0; i < MEMORY_SIZE; i++) {
-		chip8->memory[i] = 0x00; 
+		MEMORY(i) = 0x00; 
 	}
 
 	/* clear registers */
 	for (int i = 0; i < 16; i++)
-		chip8->registers[i] = 0x00;
+		REGISTER(i) = 0x00;
 
 	/* fill memory 0x0000 - 0x004F with font data*/
 	for (int i = 0; i < FONT_AMOUNT; i++) {
 		for (int j = 0; j < FONT_SIZE; j++) {		
-			chip8->memory[j + (i * FONT_SIZE)] = font[i][j];
+			MEMORY(j + (i * FONT_SIZE)) = font[i][j];
 		}
 	}
 
-	chip8->pc = MEMORY_PROGRAM_START;
-	chip8->I = 0;
-	chip8->sp = 0;		
+	PC = MEMORY_PROGRAM_START;
+	ADDRESS_REGISTER = 0;
+	SP = 0;		
 
-	return chip8;
+	return CHIP8_POINTER;
 }
 
-OPCODES* init_opcodes() {
-	OPCODES* opcodes;
-	opcodes = malloc(sizeof * opcodes);
-	if (!opcodes) return NULL;
-	opcodes->_6XNN = _6XNN;
-	opcodes->_7XNN = _7XNN;
-	opcodes->_8XY0 = _8XY0;
-	opcodes->_8XY1 = _8XY1;
-	opcodes->_8XY2 = _8XY2;
-	opcodes->_8XY3 = _8XY3;
-	opcodes->_8XY4 = _8XY4;
-	opcodes->_8XY5 = _8XY5;
-	opcodes->_8XY7 = _8XY7;
+static void (* const opcode_func[]) (CHIP8*, uint16_t) = 
+	{f_6XNN, f_7XNN, f_8XY0, f_8XY1, f_8XY2, f_8XY3, f_8XY4, f_8XY5, f_8XY6, f_8XY7, f_8XYE};
+enum OPCODES_ORDER 
+	{ _6XNN,  _7XNN,  _8XY0,  _8XY1,  _8XY2,  _8XY3,  _8XY4,  _8XY5,  _8XY6,  _8XY7,  _8XYE};
 
-	return opcodes;
-}
-
-/** Store value at register Vx */
-void _6XNN(CHIP8 *chip8_p, uint16_t opcode) {		
-	chip8_p->registers[VX(opcode)] = NN(opcode);
-}
-
-/** Add value to Vx */
-void _7XNN(CHIP8* chip8_p, uint16_t opcode) {	
-	chip8_p->registers[VX(opcode)] += NN(opcode);
-}
-
-/** Store value of Vy at register Vx */
-void _8XY0(CHIP8* chip8_p, uint16_t opcode) {	
-	chip8_p->registers[VX(opcode)] = chip8_p->registers[VY(opcode)];
-}
-
-/** Vx = Vx OR Vy */
-void _8XY1(CHIP8* chip8_p, uint16_t opcode) {
-	chip8_p->registers[VX(opcode)] |= chip8_p->registers[VY(opcode)];
-}
-
-/** Vx = Vx AND Vy */
-void _8XY2(CHIP8* chip8_p, uint16_t opcode) {
-	chip8_p->registers[VX(opcode)] &= chip8_p->registers[VY(opcode)];
-}
-
-/** Vx = Vx XOR Vy */
-void _8XY3(CHIP8* chip8_p, uint16_t opcode) {
-	chip8_p->registers[VX(opcode)] ^= chip8_p->registers[VY(opcode)];
-}
-
-void _8XY4(CHIP8* chip8_p, uint16_t opcode) {	
-	chip8_p->registers[VX(opcode)] += chip8_p->registers[VY(opcode)];
-	/* set VF carry flag if result > 0xFF */
-	if ((uint16_t) (chip8_p->registers[VX(opcode)] + chip8_p->registers[VY(opcode)]) > 0xFF) 	
-		chip8_p->registers[VF] = 1;	
-	else
-		chip8_p->registers[VF] = 0;			
-}
-
-void _8XY5(CHIP8* chip8_p, uint16_t opcode)
+/** 
+	Vx = NN
+*/
+OPCODE_IMPL(6XNN) 
 {
-	chip8_p->registers[VX(opcode)] -= chip8_p->registers[VY(opcode)];
-	/* set VF carry flag if Vx < Vy */
-	if (chip8_p->registers[VX(opcode)] < chip8_p->registers[VY(opcode)])
-		chip8_p->registers[VF] = 0;
-	else
-		chip8_p->registers[VF] = 1;
+	REGISTER(VX) = NN;
 }
 
-void _8XY7(CHIP8* chip8_p, uint16_t opcode)
+/** 
+	Vx = Vx + NN
+*/
+OPCODE_IMPL(7XNN) 
+{	
+	REGISTER(VX) += NN;
+}
+
+/** 
+	Vx = Vy 
+*/
+OPCODE_IMPL(8XY0) 
 {
-	chip8_p->registers[VX(opcode)] = chip8_p->registers[VY(opcode)] - chip8_p->registers[VX(opcode)];
-	/* set VF carry flag if Vy < Vx */
-	if (chip8_p->registers[VY(opcode)] < chip8_p->registers[VX(opcode)])
-		chip8_p->registers[VF] = 0;
-	else
-		chip8_p->registers[VF] = 1;
+	REGISTER(VX) = REGISTER(VY);
 }
 
-int free_memory(CHIP8 *chip8_p, OPCODES *opcodes_p) {
-	free(opcodes_p);
-	free(chip8_p);
+/** 
+	Vx = Vx OR Vy 
+*/
+OPCODE_IMPL(8XY1) 
+{
+	REGISTER(VX) |= REGISTER(VY);
+}
+
+/** 
+	Vx = Vx AND Vy 
+*/
+OPCODE_IMPL(8XY2) 
+{
+	REGISTER(VX) &= REGISTER(VY);
+}
+
+/** 
+	Vx = Vx XOR Vy 
+*/
+OPCODE_IMPL(8XY3) 
+{
+	REGISTER(VX) ^= REGISTER(VY);
+}
+
+/** 
+	Vx = Vx + Vy
+	set VF carry flag if result > 0xFF 
+*/
+OPCODE_IMPL(8XY4) 
+{
+	REGISTER(VX) += REGISTER(VY);
+	REGISTER(VF) = (uint16_t) (REGISTER(VX) + REGISTER(VY)) > 0xFF ? 1 : 0;	
+}
+/** 
+	Vx = Vx - Vy
+	set VF carry flag if Vx < Vy 
+*/
+OPCODE_IMPL(8XY5) 
+{
+	REGISTER(VX) -= REGISTER(VY);
+	REGISTER(VF) = REGISTER(VX) < REGISTER(VY) ? 0 : 1;
+}
+
+/**
+	Vx = Vy >> 1
+	VF = least significant bit prior to shift (0000 0001) 
+*/
+OPCODE_IMPL(8XY6)
+{
+	REGISTER(VX) = REGISTER(VY) >> 1;	
+	REGISTER(VF) = LSB(VY); 
+}
+
+/* 
+	Vx = Vy - Vx
+	set VF carry flag if Vy < Vx 
+*/
+OPCODE_IMPL(8XY7)
+{
+	REGISTER(VX) = REGISTER(VY) - REGISTER(VX);
+	REGISTER(VF) = REGISTER(VY) < REGISTER(VX) ? 0 : 1;	
+}
+
+/**  
+	VX = VY << 1
+	VF = most significant bit prior to shift (1000 0000) 
+*/
+OPCODE_IMPL(8XYE)
+{
+	REGISTER(VX) = REGISTER(VY) << 1;	
+	REGISTER(VF) = MSB(VY);
+}
+
+int free_memory(CHIP8 *CHIP8_POINTER) {	
+	free(CHIP8_POINTER);
 
 	return 0;
 }
 
-int dump_memory(uint8_t *memory_p) {
+int dump_memory(CHIP8* CHIP8_POINTER) {
 	uint16_t address = 0x00;
 	for (uint16_t i = 0; i < MEMORY_SIZE; i++) {
 
@@ -122,189 +147,111 @@ int dump_memory(uint8_t *memory_p) {
 			printf("\n%04X: ", address);
 			address += 0x0F;
 		}
-		printf("%02X ", memory_p[i]);
+		printf("%02X ", MEMORY(i));
 	}
 
 	return 0;
 }
 
-int dump_registers(CHIP8* chip8_p) {
+int dump_registers(CHIP8* CHIP8_POINTER) {
 	printf("Registers\n");
 	for (int i = 0; i < 16; i++) {
-		printf("V%01X=[%02X]\n", i, chip8_p->registers[i]);
+		printf("V%01X=[%02X]\n", i, REGISTER(i));
 	}
+	printf("PC: %04X", PC);
 
 	return 0;
 }
 
-int debug_registers(CHIP8* chip8_p) {
+int debug_registers(CHIP8* CHIP8_POINTER) {
 
-	printf("[%01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:\%02X]",
-		0, chip8_p->registers[0],
-		1, chip8_p->registers[1],
-		2, chip8_p->registers[2],
-		3, chip8_p->registers[3],
-		4, chip8_p->registers[4],
-		5, chip8_p->registers[5],
-		6, chip8_p->registers[6],
-		7, chip8_p->registers[7],
-		8, chip8_p->registers[8],
-		9, chip8_p->registers[9],
-		10, chip8_p->registers[10],
-		11, chip8_p->registers[11],
-		12, chip8_p->registers[12],
-		13, chip8_p->registers[13],
-		14, chip8_p->registers[14],
-		15, chip8_p->registers[15]
+	printf("[%01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X]",		
+		0, REGISTER(V0),
+		1, REGISTER(V1),
+		2, REGISTER(V2),
+		3, REGISTER(V3),
+		4, REGISTER(V4),
+		5, REGISTER(V5),
+		6, REGISTER(V6),
+		7, REGISTER(V7),
+		8, REGISTER(V8),
+		9, REGISTER(V9),
+		10, REGISTER(VA),
+		11, REGISTER(VB),
+		12, REGISTER(VC),
+		13, REGISTER(VD),
+		14, REGISTER(VE),
+		15, REGISTER(VF)
 	);
 	
 	return 0;
 }
 
-uint16_t fetch_opcode(CHIP8* chip8_p, const uint16_t address) {
-	uint8_t *memory = chip8_p->memory;
-	uint16_t opcode = memory[address] << 8;
-	opcode |= memory[address + 1];
+uint16_t fetch_opcode(CHIP8* CHIP8_POINTER) {	
+	uint16_t opcode = MEMORY(PC++) << 8;
+	opcode |= MEMORY(PC++);
 	
 	return opcode;
 }
 
-
-int parse_opcodes(CHIP8 *chip8_p, OPCODES* opcodes_p) {
+int run(CHIP8 *CHIP8_POINTER) {
 	
-	uint16_t opcode;
-	char decoded[50];	
-	for (uint16_t address = MEMORY_PROGRAM_START; address < MEMORY_SIZE; address = address + 2) {
-		opcode = fetch_opcode(chip8_p, address);
+	DECLARE_OPCODE_VAR;
+	char buffer[50];	
+	
+	for (PC = MEMORY_PROGRAM_START; PC < MEMORY_SIZE;) {
+		OPCODE_VAR = fetch_opcode(CHIP8_POINTER);
 
-		if (OPCODE_GROUP(opcode) == 0x0000) {
-			if (NN(opcode) == 0x00E0) 
-				sprintf(decoded, "clear_display()");
-			else if (NN(opcode) == 0x00EE)
-				sprintf(decoded, "return");
-			else
-				sprintf(decoded, "call NNN");
+		if (OPCODE_CLASS_EQUALS(0)) {
+			if (NN == 0x00E0) { DECODE_00E0(buffer); }
+			else if (NN == 0x00EE) { DECODE_00EE(buffer); }
+			else { DECODE_0NNN(buffer); }
 		}
-		else if (OPCODE_GROUP(opcode) == 0x1000) {
-			sprintf(decoded, "goto $%04X", NNN(opcode));
+		else if (OPCODE_CLASS_EQUALS(1)) { DECODE_1NNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(2)) { DECODE_2NNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(3)) { DECODE_3XNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(4)) { DECODE_4XNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(5)) { DECODE_5XY0(buffer); }
+		else if (OPCODE_CLASS_EQUALS(6)) { CALL_AND_DECODE(6XNN, buffer); }
+		else if (OPCODE_CLASS_EQUALS(7)) { CALL_AND_DECODE(7XNN, buffer); }
+		else if (OPCODE_CLASS_EQUALS(8)) {
+			if (N == 0x0000) { CALL_AND_DECODE(8XY0, buffer); }
+			else if (N == 0x0001) { CALL_AND_DECODE(8XY1, buffer); }
+			else if (N == 0x0002) { CALL_AND_DECODE(8XY2, buffer); }
+			else if (N == 0x0003) { CALL_AND_DECODE(8XY3, buffer); }
+			else if (N == 0x0004) { CALL_AND_DECODE(8XY4, buffer); }
+			else if (N == 0x0005) { CALL_AND_DECODE(8XY5, buffer); }
+			else if (N == 0x0006) { DECODE_8XY6(buffer); }
+			else if (N == 0x0007) { CALL_AND_DECODE(8XY7, buffer); }
+			else if (N == 0x000E) { DECODE_8XYE(buffer); }
 		}
-		else if (OPCODE_GROUP(opcode) == 0x2000) {
-			sprintf(decoded, "*($%04X)()", NNN(opcode));
+		else if (OPCODE_CLASS_EQUALS(9)) { DECODE_9XY0(buffer); }
+		else if (OPCODE_CLASS_EQUALS(A)) { DECODE_ANNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(B)) { DECODE_BNNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(C)) { DECODE_CXNN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(D)) { DECODE_DXYN(buffer); }
+		else if (OPCODE_CLASS_EQUALS(E)) {
+			if (NN == 0x009E) { DECODE_EX9E(buffer); }
+			else if (NN == 0x00A1) { DECODE_EXA1(buffer); }
 		}
-		else if (OPCODE_GROUP(opcode) == 0x3000) {
-			sprintf(decoded, "if (V%01X == %02X)", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0x4000) {
-			sprintf(decoded, "if (V%01X != %02X)", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0x5000) {
-			sprintf(decoded, "if (V%01X == V%01X)", VX(opcode), VY(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0x6000) {			
-			opcodes_p->_6XNN(chip8_p, opcode);
-			sprintf(decoded, "V%01X = %02X", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0x7000) {
-			opcodes_p->_7XNN(chip8_p, opcode);
-			sprintf(decoded, "V%01X += %02X", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0x8000) {
-			if ((opcode & 0x000F) == 0x0000) {
-				
-				opcodes_p->_8XY0(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X", VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0001) {
-				opcodes_p->_8XY1(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X OR V%01X", VX(opcode), VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0002) {
-				opcodes_p->_8XY2(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X AND V%01X", VX(opcode), VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0003) {
-				opcodes_p->_8XY3(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X XOR V%01X", VX(opcode), VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0004) {				
-				opcodes_p->_8XY4(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X + V%01X", VX(opcode), VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0005) {
-				opcodes_p->_8XY5(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X - V%01X", VX(opcode), VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0006) {
-				sprintf(decoded, "V%01X = V%01X >> 1", VX(opcode), VY(opcode));
-			}
-			else if ((opcode & 0x000F) == 0x0007) {
-				opcodes_p->_8XY7(chip8_p, opcode);
-				sprintf(decoded, "V%01X = V%01X - V%01X", VX(opcode), VY(opcode), VX(opcode));
-			}			
-			else if ((opcode & 0x000F) == 0x000E) {
-				sprintf(decoded, "V%01X = V%01X << 1", VX(opcode), VY(opcode));
-			}
-		}
-		else if (OPCODE_GROUP(opcode) == 0x9000) {
-			sprintf(decoded, "if (V%01X != V%01X)", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0xA000) {
-			sprintf(decoded, "I = $%04X", NNN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0xB000) {
-			sprintf(decoded, "PC = V0 + $%04X", NNN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0xC000) {
-			sprintf(decoded, "V%01X = rnd() AND %02X", VX(opcode), NN(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0xD000) {
-			sprintf(decoded, "draw(V%01X, V%01X, %01X)", VX(opcode), VY(opcode), N(opcode));
-		}
-		else if (OPCODE_GROUP(opcode) == 0xE000) {
-			if (NN(opcode) == 0x009E) {
-				sprintf(decoded, "if (key() == V%01X)", VX(opcode));
-			}
-			else if (NN(opcode) == 0x00A1) {
-				sprintf(decoded, "if (key() != V%01X)", VX(opcode));
-			}
-		}
-		else if (OPCODE_GROUP(opcode) == 0xF000) {
-			if (NN(opcode) == 0x0007) {
-				sprintf(decoded, "V%01X = get_delay_timer()", VX(opcode));
-			}
-			else if (NN(opcode) == 0x000A) {
-				sprintf(decoded, "V%01X = get_key()", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0015) {
-				sprintf(decoded, "set_delay_timer(V%01X)", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0018) {
-				sprintf(decoded, "set_sound_timer(V%01X)", VX(opcode));
-			}
-			else if (NN(opcode) == 0x001E) {
-				sprintf(decoded, "I = I + V%01X", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0029) {
-				sprintf(decoded, "I = sprite_addr[V%01X]", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0033) {
-				sprintf(decoded, "set_BCD(V%01X)", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0055) {
-				sprintf(decoded, "dump_registers(V%01X, $I)", VX(opcode));
-			}
-			else if (NN(opcode) == 0x0065) {
-				sprintf(decoded, "load_registers(V%01X, $I)", VX(opcode));
-			}
+		else if (OPCODE_CLASS_EQUALS(F)) {
+			if (NN == 0x0007) { DECODE_FX07(buffer); }
+			else if (NN == 0x000A) { DECODE_FX0A(buffer); }
+			else if (NN == 0x0015) { DECODE_FX15(buffer); }
+			else if (NN == 0x0018) { DECODE_FX18(buffer); }
+			else if (NN == 0x001E) { DECODE_FX1E(buffer); }
+			else if (NN == 0x0029) { DECODE_FX29(buffer); }
+			else if (NN == 0x0033) { DECODE_FX33(buffer); }
+			else if (NN == 0x0055) { DECODE_FX55(buffer); }
+			else if (NN == 0x0065) { DECODE_FX65(buffer); }
 		}		
 		else {
-			sprintf(decoded, "");
+			sprintf(buffer, "");
 		}
 
-		if (opcode != 0x0000) {
-			
-			printf("[$%04X]: %04X --> %s ", address, opcode, decoded);
-			debug_registers(chip8_p);
+		if (opcode != 0x0000) {			
+			printf("[$%04X]: %04X --> %s ", PC, OPCODE_VAR, buffer);
+			debug_registers(CHIP8_POINTER);
 			printf("\n");
 		}
 	}
@@ -312,8 +259,7 @@ int parse_opcodes(CHIP8 *chip8_p, OPCODES* opcodes_p) {
 }
 
 int main(int argc, char** argv) {
-	CHIP8 *chip8_p = init_chip8();	
-	OPCODES* opcodes_p = init_opcodes();
+	CHIP8 *CHIP8_POINTER = init_chip8();		
 
 	FILE* rom_file_p = fopen("roms/PONG", "rb");
 	if (!rom_file_p) {
@@ -323,14 +269,14 @@ int main(int argc, char** argv) {
 		uint8_t buffer;
 		uint16_t memory_address = MEMORY_PROGRAM_START;
 		while (fread(&buffer, sizeof buffer, 1, rom_file_p)) {
-			chip8_p->memory[memory_address++] = buffer;
+			MEMORY(memory_address++) = buffer;
 		};
 		fclose(rom_file_p);
 	}
 	
-	//if (dump_memory(&chip8->memory)) printf("Error dumping memory.\n");
-	parse_opcodes(chip8_p, opcodes_p);
-	dump_registers(chip8_p);
-	free_memory(chip8_p, opcodes_p);
+	if (dump_memory(&CHIP8_POINTER->memory)) printf("Error dumping memory.\n");
+	run(CHIP8_POINTER);
+	dump_registers(CHIP8_POINTER);
+	free_memory(CHIP8_POINTER);
 	return 0;
 }
