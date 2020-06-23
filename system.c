@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
 		fclose(rom_file_p);
 	}
 	
-	if (dump_memory(&CHIP8_POINTER->memory)) printf("Error dumping memory.\n");
+	if (dump_memory(CHIP8_POINTER)) printf("Error dumping memory.\n");
 	run(CHIP8_POINTER);
 	dump_registers(CHIP8_POINTER);
 	free_memory(CHIP8_POINTER);
