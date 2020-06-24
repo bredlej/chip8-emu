@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "system.h"
+#include <time.h>
 
 CHIP8 *init_chip8() {
 	CHIP8 *CHIP8_POINTER = malloc(sizeof *CHIP8_POINTER);
@@ -28,18 +29,25 @@ CHIP8 *init_chip8() {
 	ADDRESS_REGISTER = 0;
 	SP = 0;		
 
+	time_t tt;
+	srand(time(&tt));
+
 	return CHIP8_POINTER;
 }
 
-static void (* const opcode_func[]) (CHIP8*, uint16_t) = 
-	{f_6XNN, f_7XNN, f_8XY0, f_8XY1, f_8XY2, f_8XY3, f_8XY4, f_8XY5, f_8XY6, f_8XY7, f_8XYE};
-enum OPCODES_ORDER 
-	{ _6XNN,  _7XNN,  _8XY0,  _8XY1,  _8XY2,  _8XY3,  _8XY4,  _8XY5,  _8XY6,  _8XY7,  _8XYE};
+DEFINE_CALL(0NNN) {}
+DEFINE_CALL(00E0) {}
+DEFINE_CALL(00EE) {}
+DEFINE_CALL(1NNN) {}
+DEFINE_CALL(2NNN) {}
+DEFINE_CALL(3XNN) {}
+DEFINE_CALL(4XNN) {}
+DEFINE_CALL(5XY0) {}
 
 /** 
 	Vx = NN
 */
-OPCODE_IMPL(6XNN) 
+DEFINE_CALL(6XNN) 
 {
 	REGISTER(VX) = NN;
 }
@@ -47,7 +55,7 @@ OPCODE_IMPL(6XNN)
 /** 
 	Vx = Vx + NN
 */
-OPCODE_IMPL(7XNN) 
+DEFINE_CALL(7XNN) 
 {	
 	REGISTER(VX) += NN;
 }
@@ -55,7 +63,7 @@ OPCODE_IMPL(7XNN)
 /** 
 	Vx = Vy 
 */
-OPCODE_IMPL(8XY0) 
+DEFINE_CALL(8XY0) 
 {
 	REGISTER(VX) = REGISTER(VY);
 }
@@ -63,7 +71,7 @@ OPCODE_IMPL(8XY0)
 /** 
 	Vx = Vx OR Vy 
 */
-OPCODE_IMPL(8XY1) 
+DEFINE_CALL(8XY1) 
 {
 	REGISTER(VX) |= REGISTER(VY);
 }
@@ -71,7 +79,7 @@ OPCODE_IMPL(8XY1)
 /** 
 	Vx = Vx AND Vy 
 */
-OPCODE_IMPL(8XY2) 
+DEFINE_CALL(8XY2) 
 {
 	REGISTER(VX) &= REGISTER(VY);
 }
@@ -79,7 +87,7 @@ OPCODE_IMPL(8XY2)
 /** 
 	Vx = Vx XOR Vy 
 */
-OPCODE_IMPL(8XY3) 
+DEFINE_CALL(8XY3) 
 {
 	REGISTER(VX) ^= REGISTER(VY);
 }
@@ -88,7 +96,7 @@ OPCODE_IMPL(8XY3)
 	Vx = Vx + Vy
 	set VF carry flag if result > 0xFF 
 */
-OPCODE_IMPL(8XY4) 
+DEFINE_CALL(8XY4) 
 {
 	REGISTER(VX) += REGISTER(VY);
 	REGISTER(VF) = (uint16_t) (REGISTER(VX) + REGISTER(VY)) > 0xFF ? 1 : 0;	
@@ -97,7 +105,7 @@ OPCODE_IMPL(8XY4)
 	Vx = Vx - Vy
 	set VF carry flag if Vx < Vy 
 */
-OPCODE_IMPL(8XY5) 
+DEFINE_CALL(8XY5) 
 {
 	REGISTER(VX) -= REGISTER(VY);
 	REGISTER(VF) = REGISTER(VX) < REGISTER(VY) ? 0 : 1;
@@ -107,7 +115,7 @@ OPCODE_IMPL(8XY5)
 	Vx = Vy >> 1
 	VF = least significant bit prior to shift (0000 0001) 
 */
-OPCODE_IMPL(8XY6)
+DEFINE_CALL(8XY6)
 {
 	REGISTER(VX) = REGISTER(VY) >> 1;	
 	REGISTER(VF) = LSB(VY); 
@@ -117,7 +125,7 @@ OPCODE_IMPL(8XY6)
 	Vx = Vy - Vx
 	set VF carry flag if Vy < Vx 
 */
-OPCODE_IMPL(8XY7)
+DEFINE_CALL(8XY7)
 {
 	REGISTER(VX) = REGISTER(VY) - REGISTER(VX);
 	REGISTER(VF) = REGISTER(VY) < REGISTER(VX) ? 0 : 1;	
@@ -127,11 +135,36 @@ OPCODE_IMPL(8XY7)
 	VX = VY << 1
 	VF = most significant bit prior to shift (1000 0000) 
 */
-OPCODE_IMPL(8XYE)
+DEFINE_CALL(8XYE)
 {
 	REGISTER(VX) = REGISTER(VY) << 1;	
 	REGISTER(VF) = MSB(VY);
 }
+
+DEFINE_CALL(9XY0) {}
+DEFINE_CALL(ANNN) {}
+DEFINE_CALL(BNNN) {}
+
+/**
+	VX = rnd() AND NN
+*/
+DEFINE_CALL(CXNN)
+{
+	REGISTER(VX) = (uint8_t) (rand() / (RAND_MAX + 1.0) * 0xFF) & NN;
+}
+
+DEFINE_CALL(DXYN) {}
+DEFINE_CALL(EX9E) {}
+DEFINE_CALL(EXA1) {}
+DEFINE_CALL(FX07) {}
+DEFINE_CALL(FX0A) {}
+DEFINE_CALL(FX15) {}
+DEFINE_CALL(FX18) {}
+DEFINE_CALL(FX1E) {}
+DEFINE_CALL(FX29) {}
+DEFINE_CALL(FX33) {}
+DEFINE_CALL(FX55) {}
+DEFINE_CALL(FX65) {}
 
 int free_memory(CHIP8 *CHIP8_POINTER) {	
 	free(CHIP8_POINTER);
@@ -202,19 +235,19 @@ int run(CHIP8 *CHIP8_POINTER) {
 	for (PC = MEMORY_PROGRAM_START; PC < MEMORY_SIZE;) {
 		OPCODE_VAR = fetch_opcode(CHIP8_POINTER);
 
-		if (OPCODE_CLASS_EQUALS(0)) {
+		if (IS_OPCODE_GROUP(0)) {
 			if (NN == 0x00E0) { DECODE_00E0(buffer); }
 			else if (NN == 0x00EE) { DECODE_00EE(buffer); }
 			else { DECODE_0NNN(buffer); }
 		}
-		else if (OPCODE_CLASS_EQUALS(1)) { DECODE_1NNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(2)) { DECODE_2NNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(3)) { DECODE_3XNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(4)) { DECODE_4XNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(5)) { DECODE_5XY0(buffer); }
-		else if (OPCODE_CLASS_EQUALS(6)) { CALL_AND_DECODE(6XNN, buffer); }
-		else if (OPCODE_CLASS_EQUALS(7)) { CALL_AND_DECODE(7XNN, buffer); }
-		else if (OPCODE_CLASS_EQUALS(8)) {
+		else if (IS_OPCODE_GROUP(1)) { DECODE_1NNN(buffer); }
+		else if (IS_OPCODE_GROUP(2)) { DECODE_2NNN(buffer); }
+		else if (IS_OPCODE_GROUP(3)) { DECODE_3XNN(buffer); }
+		else if (IS_OPCODE_GROUP(4)) { DECODE_4XNN(buffer); }
+		else if (IS_OPCODE_GROUP(5)) { DECODE_5XY0(buffer); }
+		else if (IS_OPCODE_GROUP(6)) { CALL_AND_DECODE(6XNN, buffer); }
+		else if (IS_OPCODE_GROUP(7)) { CALL_AND_DECODE(7XNN, buffer); }
+		else if (IS_OPCODE_GROUP(8)) {
 			if (N == 0x0000) { CALL_AND_DECODE(8XY0, buffer); }
 			else if (N == 0x0001) { CALL_AND_DECODE(8XY1, buffer); }
 			else if (N == 0x0002) { CALL_AND_DECODE(8XY2, buffer); }
@@ -225,16 +258,16 @@ int run(CHIP8 *CHIP8_POINTER) {
 			else if (N == 0x0007) { CALL_AND_DECODE(8XY7, buffer); }
 			else if (N == 0x000E) { DECODE_8XYE(buffer); }
 		}
-		else if (OPCODE_CLASS_EQUALS(9)) { DECODE_9XY0(buffer); }
-		else if (OPCODE_CLASS_EQUALS(A)) { DECODE_ANNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(B)) { DECODE_BNNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(C)) { DECODE_CXNN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(D)) { DECODE_DXYN(buffer); }
-		else if (OPCODE_CLASS_EQUALS(E)) {
+		else if (IS_OPCODE_GROUP(9)) { DECODE_9XY0(buffer); }
+		else if (IS_OPCODE_GROUP(A)) { DECODE_ANNN(buffer); }
+		else if (IS_OPCODE_GROUP(B)) { DECODE_BNNN(buffer); }
+		else if (IS_OPCODE_GROUP(C)) { CALL_AND_DECODE(CXNN, buffer); }
+		else if (IS_OPCODE_GROUP(D)) { DECODE_DXYN(buffer); }
+		else if (IS_OPCODE_GROUP(E)) {
 			if (NN == 0x009E) { DECODE_EX9E(buffer); }
 			else if (NN == 0x00A1) { DECODE_EXA1(buffer); }
 		}
-		else if (OPCODE_CLASS_EQUALS(F)) {
+		else if (IS_OPCODE_GROUP(F)) {
 			if (NN == 0x0007) { DECODE_FX07(buffer); }
 			else if (NN == 0x000A) { DECODE_FX0A(buffer); }
 			else if (NN == 0x0015) { DECODE_FX15(buffer); }
@@ -249,7 +282,7 @@ int run(CHIP8 *CHIP8_POINTER) {
 			sprintf(buffer, "");
 		}
 
-		if (opcode != 0x0000) {			
+		if (OPCODE_VAR != 0x0000) {			
 			printf("[$%04X]: %04X --> %s ", PC, OPCODE_VAR, buffer);
 			debug_registers(CHIP8_POINTER);
 			printf("\n");

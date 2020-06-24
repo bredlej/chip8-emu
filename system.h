@@ -1,6 +1,27 @@
 #ifndef _SYSTEM_H_
 #define _SYSTEM_H_
 
+#include <stdint.h>
+
+#define CHIP8_INSTR_SET \
+OP(0NNN) OP(00E0) OP(00EE) \
+OP(1NNN) \
+OP(2NNN) \
+OP(3XNN) \
+OP(4XNN) \
+OP(5XY0) \
+OP(6XNN) \
+OP(7XNN) \
+OP(8XY0) OP(8XY1) OP(8XY2) OP(8XY3) OP(8XY4) OP(8XY5) OP(8XY6) OP(8XY7) OP(8XYE) \
+OP(9XY0) \
+OP(ANNN) \
+OP(BNNN) \
+OP(CXNN) \
+OP(DXYN) \
+OP(EX9E) \
+OP(EXA1) \
+OP(FX07) OP(FX0A) OP(FX15) OP(FX18) OP(FX1E) OP(FX29) OP(FX33) OP(FX55) OP(FX65) 
+
 #define MEMORY_SIZE 0x1000             // 4096 bytes memory total
 #define MEMORY_INTERPRETER 0x000       // 000 - 200 : 512 bytes
 #define MEMORY_PROGRAM_START 0x200     // 200 - EA0 : 3232 bytes
@@ -34,13 +55,13 @@
 #define FONT_AMOUNT 16
 #define FONT_SIZE 5
 
-#define OPCODE_VAR opcode
 #define CHIP8_POINTER chip8_p
+#define OPCODE_VAR opcode_uint16
 #define DECLARE_OPCODE_VAR uint16_t OPCODE_VAR;
-#define OPCODE_CLASS_EQUALS(n) OPCODE_GROUP(opcode) == OPCODE_ ## n ##xxx
-#define OPCODE_FUNC(opclass) void f_ ## opclass ## (CHIP8*, uint16_t)
-#define OPCODE_IMPL(opclass) void f_ ## opclass ## (CHIP8* chip8_p, uint16_t opcode)
-#define CALL_OPCODE(opcode) opcode_func[_ ## opcode ## ](chip8_p, OPCODE_VAR)
+#define IS_OPCODE_GROUP(n) OPCODE_GROUP(OPCODE_VAR) == OPCODE_ ##n ##xxx
+#define DECLARE_OPCODE_FUNC(opclass) void f_ ##opclass (CHIP8*, uint16_t);
+#define DEFINE_CALL(opclass) void f_ ##opclass (CHIP8* CHIP8_POINTER, uint16_t OPCODE_VAR)
+#define CALL(opcode) Opcode_Callbacks[_ ##opcode ](chip8_p, OPCODE_VAR)
 #define OPCODE_GROUP(opcode) (opcode & 0xF000)
 #define VX (OPCODE_VAR & 0x0FFF) >> 8
 #define VY (OPCODE_VAR & 0x00FF) >> 4
@@ -54,6 +75,7 @@
 #define N   (OPCODE_VAR & 0x000F)
 #define MSB(v) REGISTER(v) && 0xC0
 #define LSB(v) REGISTER(v) && 0x01
+
 #define DECODE_0NNN(buffer) sprintf(buffer, "call NNN");
 #define DECODE_00E0(buffer) sprintf(buffer, "clear_display()")
 #define DECODE_00EE(buffer) sprintf(buffer, "return")
@@ -75,24 +97,24 @@
 #define DECODE_8XYE(buffer) sprintf(buffer, "V%01X = V%01X << 1", VX, VY)
 #define DECODE_9XY0(buffer) sprintf(buffer, "if (V%01X != V%01X)", VX, NN)
 #define DECODE_ANNN(buffer) sprintf(buffer, "I = $%04X", NNN)
-#define DECODE_BNNN(buffer) sprintf(buffer, "PC = V0 + $%04X", NNN);
-#define DECODE_CXNN(buffer) sprintf(buffer, "V%01X = rnd() AND %02X", VX, NN);
-#define DECODE_DXYN(buffer) sprintf(buffer, "draw(V%01X, V%01X, %01X)", VX, VY, N);
-#define DECODE_EX9E(buffer) sprintf(buffer, "if (key() == V%01X)", VX);
-#define DECODE_EXA1(buffer) sprintf(buffer, "if (key() != V%01X)", VX);
-#define DECODE_FX07(buffer) sprintf(buffer, "V%01X = get_delay_timer()", VX);
-#define DECODE_FX0A(buffer) sprintf(buffer, "V%01X = get_key()", VX);
-#define DECODE_FX15(buffer) sprintf(buffer, "set_delay_timer(V%01X)", VX);
-#define DECODE_FX18(buffer) sprintf(buffer, "set_sound_timer(V%01X)", VX); 
-#define DECODE_FX1E(buffer) sprintf(buffer, "I = I + V%01X", VX);
-#define DECODE_FX29(buffer) sprintf(buffer, "I = sprite_addr[V%01X]", VX);
-#define DECODE_FX33(buffer) sprintf(buffer, "set_BCD(V%01X)", VX);
-#define DECODE_FX55(buffer) sprintf(buffer, "dump_registers(V%01X, $I)", VX);
-#define DECODE_FX65(buffer) sprintf(buffer, "load_registers(V%01X, $I)", VX);
+#define DECODE_BNNN(buffer) sprintf(buffer, "PC = V0 + $%04X", NNN)
+#define DECODE_CXNN(buffer) sprintf(buffer, "V%01X = rnd() AND %02X", VX, NN)
+#define DECODE_DXYN(buffer) sprintf(buffer, "draw(V%01X, V%01X, %01X)", VX, VY, N)
+#define DECODE_EX9E(buffer) sprintf(buffer, "if (key() == V%01X)", VX)
+#define DECODE_EXA1(buffer) sprintf(buffer, "if (key() != V%01X)", VX)
+#define DECODE_FX07(buffer) sprintf(buffer, "V%01X = get_delay_timer()", VX)
+#define DECODE_FX0A(buffer) sprintf(buffer, "V%01X = get_key()", VX)
+#define DECODE_FX15(buffer) sprintf(buffer, "set_delay_timer(V%01X)", VX)
+#define DECODE_FX18(buffer) sprintf(buffer, "set_sound_timer(V%01X)", VX)
+#define DECODE_FX1E(buffer) sprintf(buffer, "I = I + V%01X", VX)
+#define DECODE_FX29(buffer) sprintf(buffer, "I = sprite_addr[V%01X]", VX)
+#define DECODE_FX33(buffer) sprintf(buffer, "set_BCD(V%01X)", VX)
+#define DECODE_FX55(buffer) sprintf(buffer, "dump_registers(V%01X, $I)", VX)
+#define DECODE_FX65(buffer) sprintf(buffer, "load_registers(V%01X, $I)", VX)
 
 #define CALL_AND_DECODE(opcode, buffer)\
-CALL_OPCODE(opcode);\
-DECODE_ ## opcode ## (buffer);
+CALL(opcode);\
+DECODE_ ## opcode (buffer);
 
 #define OPCODE_0xxx 0x0000
 #define OPCODE_1xxx 0x1000
@@ -143,40 +165,23 @@ typedef struct {
 	uint16_t sp; // stack pointer
 } CHIP8;
 
-OPCODE_FUNC(0NNN);
-OPCODE_FUNC(00E0);
-OPCODE_FUNC(00EE);
-OPCODE_FUNC(1NNN);
-OPCODE_FUNC(2NNN);
-OPCODE_FUNC(3XNN);
-OPCODE_FUNC(4XNN);
-OPCODE_FUNC(5XY0);
-OPCODE_FUNC(6XNN); /* (&Vx, NN) - store NN at register Vx */
-OPCODE_FUNC(7XNN); /* (&Vx, NN) - add NN to Vx */
-OPCODE_FUNC(8XY0); /* (&Vx, &Vy) - store value of Vy at Vx */
-OPCODE_FUNC(8XY1); /* (&Vx, &Vy) - Vx = Vx OR Vy */
-OPCODE_FUNC(8XY2); /* (&Vx, &Vy) - Vx = Vx AND Vy */
-OPCODE_FUNC(8XY3); /* (&Vx, &Vy) - Vx = Vx XOR Vy */
-OPCODE_FUNC(8XY4); /* (&Vx, &Vy) - add Vx to Vy, set VF=1 if carry flag, or VF=0 if not */
-OPCODE_FUNC(8XY5); /* (&Vx, &Vy) - Vx = Vx - Vy, set VF=1 if carry flag, or VF=0 if not */
-OPCODE_FUNC(8XY6);
-OPCODE_FUNC(8XY7); /* (&Vx, &Vy) - Vx = Vy - Vx, set VF=1 if carry flag, or VF=0 if not  */
-OPCODE_FUNC(8XYE);
-OPCODE_FUNC(9XY0);
-OPCODE_FUNC(ANNN);
-OPCODE_FUNC(BNNN);
-OPCODE_FUNC(CXNN);
-OPCODE_FUNC(DXYN);
-OPCODE_FUNC(EX9E);
-OPCODE_FUNC(EXA1);
-OPCODE_FUNC(FX07);
-OPCODE_FUNC(FX0A);
-OPCODE_FUNC(FX15);
-OPCODE_FUNC(FX18);
-OPCODE_FUNC(FX1E);
-OPCODE_FUNC(FX29);
-OPCODE_FUNC(FX33);
-OPCODE_FUNC(FX55);
-OPCODE_FUNC(FX65);
+
+/* Declare opcode callback function type -> void F(chip8_handler, opcode) */
+typedef void (* const opcode_callback_f) (CHIP8*, const uint16_t);
+
+/* Declare a C function for each opcode */
+#define OP(x) DECLARE_OPCODE_FUNC(x);
+CHIP8_INSTR_SET;
+#undef OP
+
+/* Declare array of callback functions assigned to CHIP-8 opcodes */
+#define OP(x) f_ ## x,
+static opcode_callback_f Opcode_Callbacks[] = { CHIP8_INSTR_SET };
+#undef OP
+
+/* Declare enumeration of CHIP-8 opcodes */
+#define OP(x) _ ## x,
+enum opcodes_order_e { CHIP8_INSTR_SET };
+#undef OP
 
 #endif

@@ -11,6 +11,24 @@
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "variables": []
+    },
+    {
+      "name": "x64-Clang-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "clang_cl_x64" ],
+      "variables": [
+        {
+          "name": "CMAKE_C_COMPILER",
+          "value": "C:/PROGRAM FILES (X86)/MICROSOFT VISUAL STUDIO/2019/COMMUNITY/VC/Tools/Llvm/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        }
+      ]
     }
   ]
 }
