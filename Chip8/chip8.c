@@ -1,39 +1,27 @@
-#include "system.h"
+#include "chip8.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-CHIP8 *init_chip8() {
-  CHIP8 *CHIP8_POINTER = malloc(sizeof *CHIP8_POINTER);
-  if (CHIP8_POINTER == NULL)
-    return NULL;
-
-  /* clear whole memory */
-  for (int i = 0; i < MEMORY_SIZE; i++) {
-    MEMORY(i) = 0x00;
-  }
-
-  /* clear registers */
-  for (int i = 0; i < 16; i++)
-    REGISTER(i) = 0x00;
-
-  /* fill memory 0x0000 - 0x004F with font data*/
-  for (int i = 0; i < FONT_AMOUNT; i++) {
-    for (int j = 0; j < FONT_SIZE; j++) {
-      MEMORY(j + (i * FONT_SIZE)) = font[i][j];
-    }
-  }
-
-  PC = MEMORY_PROGRAM_START;
-  ADDRESS_REGISTER = 0;
-  SP = 0;
-
-  time_t tt;
-  srand(time(&tt));
-
-  return CHIP8_POINTER;
-}
+uint8_t chip8_font[FONT_AMOUNT][FONT_SIZE] = {
+    {0xF0, 0x90, 0x90, 0x90, 0xF0}, /* 0 */
+    {0x20, 0x60, 0x20, 0x20, 0x70}, /* 1 */
+    {0xF0, 0x10, 0xF0, 0x80, 0xF0}, /* 2 */
+    {0xF0, 0x10, 0xF0, 0x10, 0xF0}, /* 3 */
+    {0x90, 0x90, 0xF0, 0x10, 0x10}, /* 4 */
+    {0xF0, 0x80, 0xF0, 0x10, 0xF0}, /* 5 */
+    {0xF0, 0x80, 0xF0, 0x90, 0xF0}, /* 6 */
+    {0xF0, 0x10, 0x20, 0x40, 0x40}, /* 7 */
+    {0xF0, 0x90, 0xF0, 0x90, 0xF0}, /* 8 */
+    {0xF0, 0x90, 0xF0, 0x10, 0xF0}, /* 9 */
+    {0xF0, 0x90, 0xF0, 0x90, 0x90}, /* A */
+    {0xE0, 0x90, 0xE0, 0x90, 0xE0}, /* B */
+    {0xF0, 0x80, 0x80, 0x80, 0xF0}, /* C */
+    {0xE0, 0x90, 0x90, 0x90, 0xE0}, /* D */
+    {0xF0, 0x80, 0xF0, 0x80, 0xF0}, /* E */
+    {0xF0, 0x80, 0xF0, 0x80, 0x80}  /* F */
+};
 
 DEFINE_CALL(0NNN) {}
 DEFINE_CALL(00E0) {}
@@ -154,6 +142,37 @@ DEFINE_CALL(FX33) {}
 DEFINE_CALL(FX55) {}
 DEFINE_CALL(FX65) {}
 
+CHIP8 *init_chip8() {
+  CHIP8 *CHIP8_POINTER = malloc(sizeof *CHIP8_POINTER);
+  if (CHIP8_POINTER == NULL)
+    return NULL;
+
+  /* clear whole memory */
+  for (int i = 0; i < MEMORY_SIZE; i++) {
+    MEMORY(i) = 0x00;
+  }
+
+  /* clear registers */
+  for (int i = 0; i < 16; i++)
+    REGISTER(i) = 0x00;
+
+  /* fill memory 0x0000 - 0x004F with font data*/
+  for (int i = 0; i < FONT_AMOUNT; i++) {
+    for (int j = 0; j < FONT_SIZE; j++) {
+      MEMORY(j + (i * FONT_SIZE)) = chip8_font[i][j];
+    }
+  }
+
+  PC = MEMORY_PROGRAM_START;
+  ADDRESS_REGISTER = 0;
+  SP = 0;
+
+  time_t tt;
+  srand(time(&tt));
+
+  return CHIP8_POINTER;
+}
+
 int free_memory(CHIP8 *CHIP8_POINTER) {
   free(CHIP8_POINTER);
 
@@ -211,6 +230,8 @@ int run(CHIP8 *CHIP8_POINTER) {
   char buffer[50];
   DELAY_TIMER = 0x3C;
 
+  uint16_t jump = 0;
+
   for (PC = MEMORY_PROGRAM_START; PC < MEMORY_SIZE;) {
     OPCODE_VAR = fetch_opcode(CHIP8_POINTER);
 
@@ -224,6 +245,7 @@ int run(CHIP8 *CHIP8_POINTER) {
       }
     } else if (IS_OPCODE_GROUP(1)) {
       CALL_AND_DECODE(1NNN, buffer);
+      jump = NNN;
     } else if (IS_OPCODE_GROUP(2)) {
       DECODE_2NNN(buffer);
     } else if (IS_OPCODE_GROUP(3)) {
@@ -258,6 +280,7 @@ int run(CHIP8 *CHIP8_POINTER) {
       }
     } else if (IS_OPCODE_GROUP(9)) {
       CALL_AND_DECODE(9XY0, buffer);
+      jump = 1;
     } else if (IS_OPCODE_GROUP(A)) {
       DECODE_ANNN(buffer);
     } else if (IS_OPCODE_GROUP(B)) {
@@ -302,7 +325,10 @@ int run(CHIP8 *CHIP8_POINTER) {
       printf("\n");
     }
 
-    STEP;
+    if (jump) {
+      PC = jump;
+    } else
+      STEP;
 
     if (DELAY_TIMER > 0) {
       DELAY_TIMER--;
@@ -310,28 +336,5 @@ int run(CHIP8 *CHIP8_POINTER) {
       DELAY_TIMER = 0;
     }
   }
-  return 0;
-}
-
-int main(int argc, char **argv) {
-  CHIP8 *CHIP8_POINTER = init_chip8();
-
-  FILE *rom_file_p = fopen("roms/PONG", "rb");
-  if (!rom_file_p) {
-    printf("Can't open file.\n");
-  } else {
-    uint8_t buffer;
-    uint16_t memory_address = MEMORY_PROGRAM_START;
-    while (fread(&buffer, sizeof buffer, 1, rom_file_p)) {
-      MEMORY(memory_address++) = buffer;
-    };
-    fclose(rom_file_p);
-  }
-
-  if (dump_memory(CHIP8_POINTER))
-    printf("Error dumping memory.\n");
-  run(CHIP8_POINTER);
-  dump_registers(CHIP8_POINTER);
-  free_memory(CHIP8_POINTER);
   return 0;
 }

@@ -1,15 +1,16 @@
-#ifndef _SYSTEM_H_
-#define _SYSTEM_H_
+#ifndef _CHIP8_H_
+#define _CHIP8_H_
 
 #include <stdint.h>
 
 #define CHIP8_INSTR_SET                                                        \
   OP(0NNN)                                                                     \
-  OP(00E0) OP(00EE) OP(1NNN) OP(2NNN) OP(3XNN) OP(4XNN) OP(5XY0) OP(6XNN)      \
-      OP(7XNN) OP(8XY0) OP(8XY1) OP(8XY2) OP(8XY3) OP(8XY4) OP(8XY5) OP(8XY6)  \
-          OP(8XY7) OP(8XYE) OP(9XY0) OP(ANNN) OP(BNNN) OP(CXNN) OP(DXYN)       \
-              OP(EX9E) OP(EXA1) OP(FX07) OP(FX0A) OP(FX15) OP(FX18) OP(FX1E)   \
-                  OP(FX29) OP(FX33) OP(FX55) OP(FX65)
+  OP(00E0)                                                                     \
+  OP(00EE) OP(1NNN) OP(2NNN) OP(3XNN) OP(4XNN) OP(5XY0) OP(6XNN) OP(7XNN)      \
+      OP(8XY0) OP(8XY1) OP(8XY2) OP(8XY3) OP(8XY4) OP(8XY5) OP(8XY6) OP(8XY7)  \
+          OP(8XYE) OP(9XY0) OP(ANNN) OP(BNNN) OP(CXNN) OP(DXYN) OP(EX9E)       \
+              OP(EXA1) OP(FX07) OP(FX0A) OP(FX15) OP(FX18) OP(FX1E) OP(FX29)   \
+                  OP(FX33) OP(FX55) OP(FX65)
 
 #define MEMORY_SIZE 0x1000           // 4096 bytes memory total
 #define MEMORY_INTERPRETER 0x000     // 000 - 200 : 512 bytes
@@ -53,8 +54,8 @@
   void f_##opclass(CHIP8 *CHIP8_POINTER, uint16_t OPCODE_VAR)
 #define CALL(opcode) Opcode_Callbacks[_##opcode](chip8_p, OPCODE_VAR)
 #define OPCODE_GROUP(opcode) (opcode & 0xF000)
-#define VX (OPCODE_VAR & 0x0FFF) >> 8
-#define VY (OPCODE_VAR & 0x00FF) >> 4
+#define VX (OPCODE_VAR & 0x0F00) >> 8
+#define VY (OPCODE_VAR & 0x00F0) >> 4
 #define DELAY_TIMER CHIP8_POINTER->delay_timer
 #define REGISTER(v) CHIP8_POINTER->registers[v]
 #define MEMORY(address) CHIP8_POINTER->memory[address]
@@ -129,24 +130,7 @@
 #define OPCODE_Exxx 0xE000
 #define OPCODE_Fxxx 0xF000
 
-uint8_t font[FONT_AMOUNT][FONT_SIZE] = {
-    {0xF0, 0x90, 0x90, 0x90, 0xF0}, /* 0 */
-    {0x20, 0x60, 0x20, 0x20, 0x70}, /* 1 */
-    {0xF0, 0x10, 0xF0, 0x80, 0xF0}, /* 2 */
-    {0xF0, 0x10, 0xF0, 0x10, 0xF0}, /* 3 */
-    {0x90, 0x90, 0xF0, 0x10, 0x10}, /* 4 */
-    {0xF0, 0x80, 0xF0, 0x10, 0xF0}, /* 5 */
-    {0xF0, 0x80, 0xF0, 0x90, 0xF0}, /* 6 */
-    {0xF0, 0x10, 0x20, 0x40, 0x40}, /* 7 */
-    {0xF0, 0x90, 0xF0, 0x90, 0xF0}, /* 8 */
-    {0xF0, 0x90, 0xF0, 0x10, 0xF0}, /* 9 */
-    {0xF0, 0x90, 0xF0, 0x90, 0x90}, /* A */
-    {0xE0, 0x90, 0xE0, 0x90, 0xE0}, /* B */
-    {0xF0, 0x80, 0x80, 0x80, 0xF0}, /* C */
-    {0xE0, 0x90, 0x90, 0x90, 0xE0}, /* D */
-    {0xF0, 0x80, 0xF0, 0x80, 0xF0}, /* E */
-    {0xF0, 0x80, 0xF0, 0x80, 0x80}  /* F */
-};
+extern uint8_t chip8_font[FONT_AMOUNT][FONT_SIZE];
 
 typedef struct {
   uint8_t memory[MEMORY_SIZE];
@@ -160,8 +144,6 @@ typedef struct {
   uint16_t stack[STACK_SIZE];
   uint16_t sp; // stack pointer
 } CHIP8;
-
-void step(CHIP8*);
 
 /* Declare opcode callback function type -> void F(chip8_handler, opcode) */
 typedef void (*const opcode_callback_f)(CHIP8 *, const uint16_t);
@@ -180,5 +162,13 @@ static opcode_callback_f Opcode_Callbacks[] = {CHIP8_INSTR_SET};
 #define OP(x) _##x,
 enum opcodes_order_e { CHIP8_INSTR_SET };
 #undef OP
+
+CHIP8 *init_chip8();
+int free_memory(CHIP8 *);
+int dump_memory(CHIP8 *);
+int dump_registers(CHIP8 *);
+int debug_registers(CHIP8 *);
+void step(CHIP8 *);
+int run(CHIP8 *);
 
 #endif
