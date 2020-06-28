@@ -9,11 +9,16 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "clang_cl_x64" ],
+      "inheritEnvironments": [ "clang_cl_x86_x64" ],
       "variables": [
         {
           "name": "CMAKE_C_COMPILER",
           "value": "C:/PROGRAM FILES (X86)/MICROSOFT VISUAL STUDIO/2019/COMMUNITY/VC/Tools/Llvm/bin/clang-cl.exe",
+          "type": "FILEPATH"
+        },
+        {
+          "name": "CMOCKA_LIB",
+          "value": "C:/Users/geoco/source/repos/chip8-emu/lib/cmocka.lib",
           "type": "FILEPATH"
         }
       ]

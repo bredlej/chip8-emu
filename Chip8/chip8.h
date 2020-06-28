@@ -1,5 +1,5 @@
-#ifndef _CHIP8_H_
-#define _CHIP8_H_
+#ifndef CHIP8_H_
+#define CHIP8_H_
 
 #include <stdint.h>
 
@@ -49,7 +49,7 @@
 #define OPCODE_VAR opcode_uint16
 #define DECLARE_OPCODE_VAR uint16_t OPCODE_VAR;
 #define IS_OPCODE_GROUP(n) OPCODE_GROUP(OPCODE_VAR) == OPCODE_##n##xxx
-#define DECLARE_OPCODE_FUNC(opclass) void f_##opclass(CHIP8 *, uint16_t);
+#define DECLARE_OPCODE_FUNC(opclass) void f_##opclass(CHIP8 *, uint16_t)
 #define DEFINE_CALL(opclass)                                                   \
   void f_##opclass(CHIP8 *CHIP8_POINTER, uint16_t OPCODE_VAR)
 #define CALL(opcode) Opcode_Callbacks[_##opcode](chip8_p, OPCODE_VAR)
@@ -150,7 +150,7 @@ typedef void (*const opcode_callback_f)(CHIP8 *, const uint16_t);
 
 /* Declare a C function for each opcode */
 #define OP(x) DECLARE_OPCODE_FUNC(x);
-CHIP8_INSTR_SET;
+CHIP8_INSTR_SET
 #undef OP
 
 /* Declare array of callback functions assigned to CHIP-8 opcodes */
@@ -163,7 +163,8 @@ static opcode_callback_f Opcode_Callbacks[] = {CHIP8_INSTR_SET};
 enum opcodes_order_e { CHIP8_INSTR_SET };
 #undef OP
 
-CHIP8 *init_chip8();
+CHIP8 *init_chip8(void);
+uint16_t fetch_opcode(CHIP8*);
 int free_memory(CHIP8 *);
 int dump_memory(CHIP8 *);
 int dump_registers(CHIP8 *);

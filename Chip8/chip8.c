@@ -30,15 +30,15 @@ DEFINE_CALL(1NNN) { PC = NNN; }
 DEFINE_CALL(2NNN) {}
 DEFINE_CALL(3XNN) {
   if (REGISTER(VX) == NN)
-    STEP;
+    STEP
 }
 DEFINE_CALL(4XNN) {
   if (REGISTER(VX) != NN)
-    STEP;
+    STEP
 }
 DEFINE_CALL(5XY0) {
   if (REGISTER(VX) == REGISTER(VY))
-    STEP;
+    STEP
 }
 
 /**
@@ -93,7 +93,7 @@ DEFINE_CALL(8XY5) {
         VF = least significant bit prior to shift (0000 0001)
 */
 DEFINE_CALL(8XY6) {
-  REGISTER(VX) = REGISTER(VY) >> 1;
+  REGISTER(VX) = (uint8_t) REGISTER(VY) >> 1;
   REGISTER(VF) = LSB(VY);
 }
 
@@ -168,7 +168,7 @@ CHIP8 *init_chip8() {
   SP = 0;
 
   time_t tt;
-  srand(time(&tt));
+  srand((uint32_t)time(&tt));
 
   return CHIP8_POINTER;
 }
@@ -216,7 +216,7 @@ int debug_registers(CHIP8 *CHIP8_POINTER) {
 }
 
 uint16_t fetch_opcode(CHIP8 *CHIP8_POINTER) {
-  uint16_t opcode = MEMORY(PC) << 8;
+  uint16_t opcode = (uint16_t) MEMORY(PC) << 8;
   opcode |= MEMORY(PC + 1);
 
   return opcode;
@@ -226,7 +226,7 @@ void step(CHIP8 *CHIP8_POINTER) { PC = PC + 2; }
 
 int run(CHIP8 *CHIP8_POINTER) {
 
-  DECLARE_OPCODE_VAR;
+  DECLARE_OPCODE_VAR
   char buffer[50];
   DELAY_TIMER = 0x3C;
 
@@ -241,52 +241,52 @@ int run(CHIP8 *CHIP8_POINTER) {
       } else if (NN == 0x00EE) {
         DECODE_00EE(buffer);
       } else {
-        DECODE_0NNN(buffer);
+        DECODE_0NNN(buffer)
       }
     } else if (IS_OPCODE_GROUP(1)) {
-      CALL_AND_DECODE(1NNN, buffer);
+      CALL_AND_DECODE(1NNN, buffer)
       jump = NNN;
     } else if (IS_OPCODE_GROUP(2)) {
       DECODE_2NNN(buffer);
     } else if (IS_OPCODE_GROUP(3)) {
-      CALL_AND_DECODE(3XNN, buffer);
+      CALL_AND_DECODE(3XNN, buffer)
     } else if (IS_OPCODE_GROUP(4)) {
-      CALL_AND_DECODE(4XNN, buffer);
+      CALL_AND_DECODE(4XNN, buffer)
     } else if (IS_OPCODE_GROUP(5)) {
-      CALL_AND_DECODE(5XY0, buffer);
+      CALL_AND_DECODE(5XY0, buffer)
     } else if (IS_OPCODE_GROUP(6)) {
-      CALL_AND_DECODE(6XNN, buffer);
+      CALL_AND_DECODE(6XNN, buffer)
     } else if (IS_OPCODE_GROUP(7)) {
-      CALL_AND_DECODE(7XNN, buffer);
+      CALL_AND_DECODE(7XNN, buffer)
     } else if (IS_OPCODE_GROUP(8)) {
       if (N == 0x0000) {
-        CALL_AND_DECODE(8XY0, buffer);
+        CALL_AND_DECODE(8XY0, buffer)
       } else if (N == 0x0001) {
-        CALL_AND_DECODE(8XY1, buffer);
+        CALL_AND_DECODE(8XY1, buffer)
       } else if (N == 0x0002) {
-        CALL_AND_DECODE(8XY2, buffer);
+        CALL_AND_DECODE(8XY2, buffer)
       } else if (N == 0x0003) {
-        CALL_AND_DECODE(8XY3, buffer);
+        CALL_AND_DECODE(8XY3, buffer)
       } else if (N == 0x0004) {
-        CALL_AND_DECODE(8XY4, buffer);
+        CALL_AND_DECODE(8XY4, buffer)
       } else if (N == 0x0005) {
-        CALL_AND_DECODE(8XY5, buffer);
+        CALL_AND_DECODE(8XY5, buffer)
       } else if (N == 0x0006) {
         DECODE_8XY6(buffer);
       } else if (N == 0x0007) {
-        CALL_AND_DECODE(8XY7, buffer);
+        CALL_AND_DECODE(8XY7, buffer)
       } else if (N == 0x000E) {
         DECODE_8XYE(buffer);
       }
     } else if (IS_OPCODE_GROUP(9)) {
-      CALL_AND_DECODE(9XY0, buffer);
+      CALL_AND_DECODE(9XY0, buffer)
       jump = 1;
     } else if (IS_OPCODE_GROUP(A)) {
       DECODE_ANNN(buffer);
     } else if (IS_OPCODE_GROUP(B)) {
-      CALL_AND_DECODE(BNNN, buffer);
+      CALL_AND_DECODE(BNNN, buffer)
     } else if (IS_OPCODE_GROUP(C)) {
-      CALL_AND_DECODE(CXNN, buffer);
+      CALL_AND_DECODE(CXNN, buffer)
     } else if (IS_OPCODE_GROUP(D)) {
       DECODE_DXYN(buffer);
     } else if (IS_OPCODE_GROUP(E)) {
@@ -297,11 +297,11 @@ int run(CHIP8 *CHIP8_POINTER) {
       }
     } else if (IS_OPCODE_GROUP(F)) {
       if (NN == 0x0007) {
-        CALL_AND_DECODE(FX07, buffer);
+        CALL_AND_DECODE(FX07, buffer)
       } else if (NN == 0x000A) {
         DECODE_FX0A(buffer);
       } else if (NN == 0x0015) {
-        CALL_AND_DECODE(FX15, buffer);
+        CALL_AND_DECODE(FX15, buffer)
       } else if (NN == 0x0018) {
         DECODE_FX18(buffer);
       } else if (NN == 0x001E) {
@@ -328,7 +328,7 @@ int run(CHIP8 *CHIP8_POINTER) {
     if (jump) {
       PC = jump;
     } else
-      STEP;
+      STEP
 
     if (DELAY_TIMER > 0) {
       DELAY_TIMER--;

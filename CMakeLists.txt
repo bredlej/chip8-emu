@@ -5,13 +5,24 @@ cmake_minimum_required (VERSION 3.8)
 
 project ("CHIP-8 Emulator" C)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_FLAGS "-Wall -Wno-error")
+enable_testing()
 add_subdirectory(Chip8)
-# Add source to this project's executable.
+add_subdirectory(test)
+add_subdirectory(external)
+
 add_executable (chip8-emu "main.c")
+include(CTest)
+
 target_include_directories(chip8-emu PUBLIC
 	"${PROJECT_BINARY_DIR}"
 	"${PROJECT_SOURCE_DIR}/Chip8"
+	"${PROJECT_SOURCE_DIR}/include"
 	)
+target_link_libraries(chip8-emu PUBLIC Chip8 ${CMAKE_CURRENT_LIST_DIR})
 
-target_link_libraries(chip8-emu PUBLIC Chip8)
-# TODO: Add tests and install targets if needed.
+add_custom_command(
+        TARGET chip8-emu POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/roms
+                ${CMAKE_CURRENT_BINARY_DIR}/roms)
