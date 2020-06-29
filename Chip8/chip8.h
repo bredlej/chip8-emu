@@ -65,8 +65,8 @@
 #define NNN (OPCODE_VAR & 0x0FFF)
 #define NN (OPCODE_VAR & 0x00FF)
 #define N (OPCODE_VAR & 0x000F)
-#define MSB(v) REGISTER(v) && 0xC0
-#define LSB(v) REGISTER(v) && 0x01
+#define MSB(v) (REGISTER(v) & 0b10000000) >> 7
+#define LSB(v) (REGISTER(v) & 0b00000001)
 #define STEP step(CHIP8_POINTER);
 
 #define DECODE_0NNN(buffer) sprintf(buffer, "call NNN");
