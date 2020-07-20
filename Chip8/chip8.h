@@ -40,7 +40,7 @@
 
 #define GFX_WIDTH 64
 #define GFX_HEIGHT 32
-#define GFX_RESOLUTION GFX_WIDTH *GFX_HEIGHT
+#define GFX_RESOLUTION GFX_WIDTH * GFX_HEIGHT
 
 #define FONT_AMOUNT 16
 #define FONT_SIZE 5
@@ -54,8 +54,8 @@
   void f_##opclass(CHIP8 *CHIP8_POINTER, uint16_t OPCODE_VAR)
 #define CALL(opcode) Opcode_Callbacks[_##opcode](chip8_p, OPCODE_VAR)
 #define OPCODE_GROUP(opcode) (opcode & 0xF000)
-#define VX (OPCODE_VAR & 0x0F00) >> 8
-#define VY (OPCODE_VAR & 0x00F0) >> 4
+#define VX (uint8_t) ((OPCODE_VAR & 0x0F00) >> 8)
+#define VY (uint8_t) ((OPCODE_VAR & 0x00F0) >> 4)
 #define DELAY_TIMER CHIP8_POINTER->delay_timer
 #define REGISTER(v) CHIP8_POINTER->registers[v]
 #define MEMORY(address) CHIP8_POINTER->memory[address]
@@ -68,6 +68,8 @@
 #define MSB(v) (REGISTER(v) & 0b10000000) >> 7
 #define LSB(v) (REGISTER(v) & 0b00000001)
 #define STEP step(CHIP8_POINTER);
+#define CARRY 1
+#define NO_CARRY 0
 
 #define DECODE_0NNN(buffer) sprintf(buffer, "call NNN");
 #define DECODE_00E0(buffer) sprintf(buffer, "clear_display()")

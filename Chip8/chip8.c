@@ -76,16 +76,20 @@ DEFINE_CALL(8XY3) { REGISTER(VX) ^= REGISTER(VY); }
         set VF carry flag if result > 0xFF
 */
 DEFINE_CALL(8XY4) {
-  REGISTER(VX) += REGISTER(VY);
-  REGISTER(VF) = (uint16_t)(REGISTER(VX) + REGISTER(VY)) > 0xFF ? 1 : 0;
+  REGISTER(VF) = ((uint16_t)REGISTER(VX) + (uint16_t)REGISTER(VY)) > 0xFF
+                     ? CARRY
+                     : NO_CARRY;
+  REGISTER(VX) = REGISTER(VX) + REGISTER(VY);
 }
 /**
         Vx = Vx - Vy
         set VF carry flag if Vx < Vy
 */
 DEFINE_CALL(8XY5) {
+  REGISTER(VF) = ((uint16_t)REGISTER(VX) - (uint16_t)REGISTER(VY)) < 0x00
+                     ? CARRY
+                     : NO_CARRY;
   REGISTER(VX) -= REGISTER(VY);
-  REGISTER(VF) = REGISTER(VX) < REGISTER(VY) ? 0 : 1;
 }
 
 /**
@@ -93,8 +97,8 @@ DEFINE_CALL(8XY5) {
         VF = least significant bit prior to shift (0000 0001)
 */
 DEFINE_CALL(8XY6) {
-  REGISTER(VX) = (uint8_t) REGISTER(VY) >> 1;
   REGISTER(VF) = LSB(VY);
+  REGISTER(VX) = (uint8_t)REGISTER(VY) >> 1;
 }
 
 /*
@@ -102,8 +106,10 @@ DEFINE_CALL(8XY6) {
         set VF carry flag if Vy < Vx
 */
 DEFINE_CALL(8XY7) {
+  REGISTER(VF) = ((uint16_t)REGISTER(VY) - (uint16_t)REGISTER(VX)) < 0x00
+                     ? CARRY
+                     : NO_CARRY;
   REGISTER(VX) = REGISTER(VY) - REGISTER(VX);
-  REGISTER(VF) = REGISTER(VY) < REGISTER(VX) ? 0 : 1;
 }
 
 /**
@@ -111,8 +117,8 @@ DEFINE_CALL(8XY7) {
         VF = most significant bit prior to shift (1000 0000)
 */
 DEFINE_CALL(8XYE) {
-  REGISTER(VX) = REGISTER(VY) << 1;
   REGISTER(VF) = MSB(VY);
+  REGISTER(VX) = REGISTER(VY) << 1;
 }
 
 DEFINE_CALL(9XY0) {
@@ -216,7 +222,7 @@ int debug_registers(CHIP8 *CHIP8_POINTER) {
 }
 
 uint16_t fetch_opcode(CHIP8 *CHIP8_POINTER) {
-  uint16_t opcode = (uint16_t) MEMORY(PC) << 8;
+  uint16_t opcode = (uint16_t)MEMORY(PC) << 8;
   opcode |= MEMORY(PC + 1);
 
   return opcode;
@@ -330,9 +336,10 @@ int run(CHIP8 *CHIP8_POINTER) {
     } else
       STEP
 
-    if (DELAY_TIMER > 0) {
-      DELAY_TIMER--;
-    } else {
+          if (DELAY_TIMER > 0) {
+        DELAY_TIMER--;
+      }
+    else {
       DELAY_TIMER = 0;
     }
   }

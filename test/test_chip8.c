@@ -20,7 +20,8 @@ void test_Should_Initialize_Chip8(void) {
 
 void test_Step_Should_Increase_PC_By_Two(void) {
   PC = MEMORY_PROGRAM_START;
-  STEP TEST_ASSERT_EQUAL_HEX8(MEMORY_PROGRAM_START + 2, PC);
+  STEP;
+  TEST_ASSERT_EQUAL_HEX8(MEMORY_PROGRAM_START + 2, PC);
 }
 
 void test_Should_Group_Opcodes(void) {
@@ -115,14 +116,14 @@ void test_Should_Fetch_Opcode_From_PC(void) {
   MEMORY(MEMORY_PROGRAM_START + 3) = 0x15;
   TEST_ASSERT_EQUAL_HEX16_MESSAGE(0x1200, fetch_opcode(CHIP8_POINTER),
                                   "Wrong opcode fetched from PC");
-  STEP TEST_ASSERT_EQUAL_HEX16_MESSAGE(0x6415, fetch_opcode(CHIP8_POINTER),
-                                       "Wrong opcode fetched from PC");
+  STEP;
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(0x6415, fetch_opcode(CHIP8_POINTER),
+                                  "Wrong opcode fetched from PC");
 }
 
 void test_Should_Determine_Most_Significant_Bit(void) {
   REGISTER(V0) = 0b00000001;
   TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x00, MSB(V0), "Wrong MSB(x) calculation.");
-
   REGISTER(V0) = 0b10000000;
   TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x01, MSB(V0), "Wrong MSB(x) calculation.");
 }
@@ -154,13 +155,36 @@ void test_Instruction_2NNN() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
 }
 void test_Instruction_3XNN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x01;
+  f_3XNN(CHIP8_POINTER, 0x30FF);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START, PC,
+                                  "Wrong PC calculation result.");
+  f_3XNN(CHIP8_POINTER, 0x3001);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START + 2, PC,
+                                  "Wrong PC calculation result.");
 }
 void test_Instruction_4XNN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x01;
+  f_4XNN(CHIP8_POINTER, 0x4001);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START, PC,
+                                  "Wrong PC calculation result.");
+  f_4XNN(CHIP8_POINTER, 0x40FF);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START + 2, PC,
+                                  "Wrong PC calculation result.");
 }
 void test_Instruction_5XY0() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x01;
+  REGISTER(V1) = 0x00;
+  f_5XY0(CHIP8_POINTER, 0x5010);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START, PC,
+                                  "Wrong PC calculation result.");
+  REGISTER(V1) = 0x01;
+  f_5XY0(CHIP8_POINTER, 0x5010);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START + 2, PC,
+                                  "Wrong PC calculation result.");
 }
 void test_Instruction_6XNN() {
   f_6XNN(CHIP8_POINTER, (uint16_t)0x6010);
@@ -193,40 +217,149 @@ void test_Instruction_7XNN() {
                                  "Wrong Vx += NN instruction.");
 }
 void test_Instruction_8XY0() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x01;
+  f_8XY0(CHIP8_POINTER, (uint16_t)0x8010);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(REGISTER(V1), REGISTER(V0),
+                                 "Wrong Vx == Vy instruction.");
+  REGISTER(VF) = 0xFF;
+  f_8XY0(CHIP8_POINTER, (uint16_t)0x81F0);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(REGISTER(VF), REGISTER(V1),
+                                 "Wrong Vx == Vy instruction.");
 }
 void test_Instruction_8XY1() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0b00000001;
+  REGISTER(V1) = 0b10000000;
+  f_8XY1(CHIP8_POINTER, 0x8011);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b10000001, REGISTER(V0),
+                                 "Wrong Vx |= Vy instruction.");
+  REGISTER(V2) = 0b10010001;
+  f_8XY1(CHIP8_POINTER, 0x8021);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b10010001, REGISTER(V0),
+                                 "Wrong Vx |= Vy instruction.");
 }
 void test_Instruction_8XY2() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0b00000001;
+  REGISTER(V1) = 0b10000000;
+  f_8XY2(CHIP8_POINTER, 0x8012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b00000000, REGISTER(V0),
+                                 "Wrong Vx &= Vy instruction.");
+  REGISTER(V0) = 0b00010001;
+  REGISTER(V2) = 0b10010001;
+  f_8XY2(CHIP8_POINTER, 0x8022);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b00010001, REGISTER(V0),
+                                 "Wrong Vx &= Vy instruction.");
 }
 void test_Instruction_8XY3() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0b00000001;
+  REGISTER(V1) = 0b10000000;
+  f_8XY3(CHIP8_POINTER, 0x8013);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b10000001, REGISTER(V0),
+                                 "Wrong Vx ^= Vy instruction.");
+  REGISTER(V0) = 0b00010001;
+  REGISTER(V2) = 0b10010001;
+  f_8XY3(CHIP8_POINTER, 0x8023);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0b10000000, REGISTER(V0),
+                                 "Wrong Vx ^= Vy instruction.");
 }
 void test_Instruction_8XY4() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x01;
+  REGISTER(V1) = 0x01;
+  REGISTER(VF) = NO_CARRY;
+  f_8XY4(CHIP8_POINTER, 0x8014);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x02, REGISTER(V0),
+                                 "Wrong Vx = Vx + Vy instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(NO_CARRY, REGISTER(VF), "Wrong carry set.");
+  REGISTER(V2) = 0xFF;
+  f_8XY4(CHIP8_POINTER, 0x8124);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x00, REGISTER(V1),
+                                 "Wrong Vx = Vx + Vy instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(CARRY, REGISTER(VF), "Wrong carry set.");
 }
 void test_Instruction_8XY5() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x03;
+  REGISTER(V1) = 0x01;
+  f_8XY5(CHIP8_POINTER, 0x8015);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x02, REGISTER(V0),
+                                 "Wrong Vx = Vx - Vy instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(NO_CARRY, REGISTER(VF), "Wrong carry set.");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x01;
+  f_8XY5(CHIP8_POINTER, 0x8015);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0xFF, REGISTER(V0),
+                                 "Wrong Vx = Vx - Vy instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(CARRY, REGISTER(VF), "Wrong carry set.");
 }
 void test_Instruction_8XY6() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x81; // 1000 0001
+  f_8XY6(CHIP8_POINTER, 0x8016);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x40, REGISTER(V0),
+                                 "Wrong Vx = Vy >> 1 instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x01, REGISTER(VF),
+                                 "Wrong LSB(Vy) calculation.");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x90; // 1001 0000
+  f_8XY6(CHIP8_POINTER, 0x8016);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x48, REGISTER(V0),
+                                 "Wrong Vx = Vy >> 1 instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x00, REGISTER(VF),
+                                 "Wrong LSB(Vy) calculation.");
 }
 void test_Instruction_8XY7() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x03;
+  REGISTER(V1) = 0x01;
+  f_8XY7(CHIP8_POINTER, 0x8017);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0xFE, REGISTER(V0),
+                                 "Wrong Vx = Vy - Vx instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(CARRY, REGISTER(VF), "Wrong carry set.");
+  REGISTER(V0) = 0x01;
+  REGISTER(V1) = 0x02;
+  f_8XY7(CHIP8_POINTER, 0x8017);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x01, REGISTER(V0),
+                                 "Wrong Vx = Vy - Vx instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(NO_CARRY, REGISTER(VF), "Wrong carry set.");
 }
 void test_Instruction_8XYE() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x81; // 1000 0001
+  f_8XYE(CHIP8_POINTER, 0x801E);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x02, REGISTER(V0),
+                                 "Wrong Vx = Vy << 1 instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x01, REGISTER(VF),
+                                 "Wrong MSB(Vy) calculation.");
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x05; // 0000 0101
+  f_8XYE(CHIP8_POINTER, 0x801E);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x0A, REGISTER(V0),
+                                 "Wrong Vx = Vy << 1 instruction.");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(0x00, REGISTER(VF),
+                                 "Wrong MSB(Vy) calculation.");
 }
 void test_Instruction_9XY0() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x00;
+  f_9XY0(CHIP8_POINTER, 0x9010);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START, PC,
+                                  "Wrong PC position after instruction call.");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x01;
+  f_9XY0(CHIP8_POINTER, 0x9010);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START + 2, PC,
+                                  "Wrong PC position after instruction call.");
 }
+
 void test_Instruction_ANNN() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
 }
 void test_Instruction_BNNN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  PC = MEMORY_PROGRAM_START;
+  REGISTER(V0) = 0x01;
+  f_BNNN(CHIP8_POINTER, 0xB300);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(
+      0x301, PC, "Wrong address calculation in PC = Vx + NNN.");
 }
 void test_Instruction_CXNN() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
