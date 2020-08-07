@@ -21,7 +21,7 @@ void test_Should_Initialize_Chip8(void) {
 void test_Step_Should_Increase_PC_By_Two(void) {
   PC = MEMORY_PROGRAM_START;
   STEP;
-  TEST_ASSERT_EQUAL_HEX8(MEMORY_PROGRAM_START + 2, PC);
+  TEST_ASSERT_EQUAL_HEX16(MEMORY_PROGRAM_START + 2, PC);
 }
 
 void test_Should_Group_Opcodes(void) {
@@ -350,7 +350,6 @@ void test_Instruction_9XY0() {
   TEST_ASSERT_EQUAL_HEX16_MESSAGE(MEMORY_PROGRAM_START + 2, PC,
                                   "Wrong PC position after instruction call.");
 }
-
 void test_Instruction_ANNN() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
 }
@@ -362,7 +361,21 @@ void test_Instruction_BNNN() {
       0x301, PC, "Wrong address calculation in PC = Vx + NNN.");
 }
 void test_Instruction_CXNN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+    REGISTER(V0) = 0x00;
+    REGISTER(V1) = 0x00;
+    REGISTER(V2) = 0x00;
+    for (int i = 0; i<=1000; i++) {
+        f_CXNN(CHIP8_POINTER, 0xC010);
+        TEST_ASSERT_INT8_WITHIN_MESSAGE(0x10, 0x00, REGISTER(V0), "CXNN calculated wrong random number.");
+    }      
+    for (int i = 0; i <= 1000; i++) {
+        f_CXNN(CHIP8_POINTER, 0xC150);
+        TEST_ASSERT_INT8_WITHIN_MESSAGE(0x50, 0x00, REGISTER(V1), "CXNN calculated wrong random number.");
+    }
+    for (int i = 0; i <= 1000; i++) {
+        f_CXNN(CHIP8_POINTER, 0xC2FF);
+        TEST_ASSERT_INT8_WITHIN_MESSAGE(0xFF, 0x00, REGISTER(V2), "CXNN calculated wrong random number.");
+    }
 }
 void test_Instruction_DXYN() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");

@@ -1,4 +1,5 @@
 #include "chip8.h"
+#include "pcg_basic.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,9 @@ uint8_t chip8_font[FONT_AMOUNT][FONT_SIZE] = {
     {0xF0, 0x80, 0xF0, 0x80, 0xF0}, /* E */
     {0xF0, 0x80, 0xF0, 0x80, 0x80}  /* F */
 };
+
+pcg32_random_t rng;
+uint32_t rnd(void) { return pcg32_random_r(&rng); }
 
 DEFINE_CALL(0NNN) {}
 DEFINE_CALL(00E0) {}
@@ -132,7 +136,8 @@ DEFINE_CALL(BNNN) { PC = NNN + REGISTER(V0); }
         VX = rnd() AND NN
 */
 DEFINE_CALL(CXNN) {
-  REGISTER(VX) = (uint8_t)(rand() / (RAND_MAX + 1.0) * 0xFF) & NN;
+  //REGISTER(VX) = (uint8_t)(rand() / (RAND_MAX + 1.0) * 0xFF) & NN;
+    REGISTER(VX) = (uint8_t)(rnd() % 0xFF) & NN;
 }
 
 DEFINE_CALL(DXYN) {}
@@ -173,8 +178,7 @@ CHIP8 *init_chip8() {
   ADDRESS_REGISTER = 0;
   SP = 0;
 
-  time_t tt;
-  srand((uint32_t)time(&tt));
+  pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&dump_memory);
 
   return CHIP8_POINTER;
 }
