@@ -14,6 +14,9 @@ void test_Should_Initialize_Chip8(void) {
   for (int i = 0; i < REGISTERS_AMOUNT; i++) {
     TEST_ASSERT_EQUAL_HEX8(0x00, REGISTER(i));
   }
+  for (int i = 0; i < BITMAP_SIZE; i++) {
+    TEST_ASSERT_EQUAL_HEX8(0x00, FRAMEBUFFER(i));
+  }
   TEST_ASSERT_EQUAL_HEX8(0x00, ADDRESS_REGISTER);
   TEST_ASSERT_EQUAL_HEX8(0x00, PC);
 }
@@ -351,7 +354,10 @@ void test_Instruction_9XY0() {
                                   "Wrong PC position after instruction call.");
 }
 void test_Instruction_ANNN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  ADDRESS_REGISTER = 0x0000;
+  f_ANNN(CHIP8_POINTER, 0xA100);
+  TEST_ASSERT_EQUAL_HEX16_MESSAGE(0x100, ADDRESS_REGISTER,
+                                  "Wrong Address Register value");
 }
 void test_Instruction_BNNN() {
   PC = MEMORY_PROGRAM_START;
@@ -361,24 +367,124 @@ void test_Instruction_BNNN() {
       0x301, PC, "Wrong address calculation in PC = Vx + NNN.");
 }
 void test_Instruction_CXNN() {
-    REGISTER(V0) = 0x00;
-    REGISTER(V1) = 0x00;
-    REGISTER(V2) = 0x00;
-    for (int i = 0; i<=1000; i++) {
-        f_CXNN(CHIP8_POINTER, 0xC010);
-        TEST_ASSERT_INT8_WITHIN_MESSAGE(0x10, 0x00, REGISTER(V0), "CXNN calculated wrong random number.");
-    }      
-    for (int i = 0; i <= 1000; i++) {
-        f_CXNN(CHIP8_POINTER, 0xC150);
-        TEST_ASSERT_INT8_WITHIN_MESSAGE(0x50, 0x00, REGISTER(V1), "CXNN calculated wrong random number.");
-    }
-    for (int i = 0; i <= 1000; i++) {
-        f_CXNN(CHIP8_POINTER, 0xC2FF);
-        TEST_ASSERT_INT8_WITHIN_MESSAGE(0xFF, 0x00, REGISTER(V2), "CXNN calculated wrong random number.");
-    }
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x00;
+  REGISTER(V2) = 0x00;
+  for (int i = 0; i <= 1000; i++) {
+    f_CXNN(CHIP8_POINTER, 0xC010);
+    TEST_ASSERT_INT8_WITHIN_MESSAGE(0x10, 0x00, REGISTER(V0),
+                                    "CXNN calculated wrong random number.");
+  }
+  for (int i = 0; i <= 1000; i++) {
+    f_CXNN(CHIP8_POINTER, 0xC150);
+    TEST_ASSERT_INT8_WITHIN_MESSAGE(0x50, 0x00, REGISTER(V1),
+                                    "CXNN calculated wrong random number.");
+  }
+  for (int i = 0; i <= 1000; i++) {
+    f_CXNN(CHIP8_POINTER, 0xC2FF);
+    TEST_ASSERT_INT8_WITHIN_MESSAGE(0xFF, 0x00, REGISTER(V2),
+                                    "CXNN calculated wrong random number.");
+  }
 }
 void test_Instruction_DXYN() {
-  TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");
+  /*
+    Two rows - one-byte sprite insert (11111111 00000000)
+  */
+  REGISTER(V0) = 0x00;
+  REGISTER(V1) = 0x04;
+  REGISTER(VF) = 0x00;
+  MEMORY(0x900 + 0) = 0xFF;
+  MEMORY(0x900 + 1) = 0xFF;
+  ADDRESS_REGISTER = 0x900;
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xFF, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
+      "(1 byte) Framebuffer wrong sprite set from I+0");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xFF,
+      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1) + 1)),
+      "(1 byte) Framebuffer wrong sprite set from I+1");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x00, REGISTER(VF),
+      "(1 byte) Registered pixel collision but there was none");
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x00, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
+      "(1 byte) Framebuffer sprite did not clear pixels unerneath");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x01, REGISTER(VF),
+      "Pixel collision not registered in VF");      
+  /*
+    Two rows - two-byte sprite insert (00001111 11110000)
+  */
+  REGISTER(V0) = 0x0C;
+  REGISTER(V1) = 0x04;
+  REGISTER(VF) = 0x00;
+  MEMORY(0x900) = 0xFF;
+  MEMORY(0x900 + 1) = 0xFF;
+  ADDRESS_REGISTER = 0x900;
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x0f, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
+      "(2 bytes) Framebuffer wrong sprite set from I+0");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xf0,
+      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0) + 8, REGISTER(V1))),
+      "(2 bytes) Framebuffer wrong sprite set from I+0 (wrapped to right "
+      "byte)");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x0f,
+      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1) + 1)),
+      "(2 bytes) Framebuffer wrong sprite set from I+1");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xf0,
+      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0) + 8, REGISTER(V1) + 1)),
+      "(2 bytes) Framebuffer wrong sprite set from I+1 (wrapped to right "
+      "byte)");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x00, REGISTER(VF),
+      "(2 bytes) Registered pixel collision but there was none");
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x00, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
+      "(2 bytes) Framebuffer sprite did not clear pixels unerneath");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x01, REGISTER(VF), 
+      "(2 bytes) Pixel collision not registered in VF");
+  /*
+    Two rows - two-byte sprite insert (wrap pixels around display horizontally & vertically)
+  */
+  REGISTER(V0) = 0x3C;
+  REGISTER(V1) = 0x1F;
+  REGISTER(VF) = 0x00;
+  MEMORY(0x900) = 0xFF;
+  MEMORY(0x900 + 1) = 0xFF;
+  ADDRESS_REGISTER = 0x900;
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x0f, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
+      "(lower-right) Framebuffer wrong sprite set from I+0");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xf0,
+      FRAMEBUFFER(xy_to_framebuffer_index(0, REGISTER(V1))),
+      "(lower-left) Framebuffer wrong sprite set from I+0 (wrapped to right "
+      "byte)");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x0f,
+      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), 0)),
+      "(upper-right) Framebuffer wrong sprite set from I+1");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0xf0,
+      FRAMEBUFFER(xy_to_framebuffer_index(0, 0)),
+      "(upper-left) Framebuffer wrong sprite set from I+1 (wrapped to right "
+      "byte)");
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x00, REGISTER(VF),
+      "(wrap) Registered pixel collision but there was none");
+  f_DXYN(CHIP8_POINTER, 0xD012);
+  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+      0x01, REGISTER(VF),
+      "(wrap) Pixel collision not registered in VF");
 }
 void test_Instruction_EX9E() {
   TEST_ASSERT_TRUE_MESSAGE(0 == 1, "Not implemented");

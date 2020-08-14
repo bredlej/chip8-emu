@@ -129,18 +129,90 @@ DEFINE_CALL(9XY0) {
   if (REGISTER(VX) != REGISTER(VY))
     STEP;
 }
-DEFINE_CALL(ANNN) {}
+DEFINE_CALL(ANNN) { ADDRESS_REGISTER = NNN; }
 DEFINE_CALL(BNNN) { PC = NNN + REGISTER(V0); }
 
 /**
         VX = rnd() AND NN
 */
-DEFINE_CALL(CXNN) {
-  //REGISTER(VX) = (uint8_t)(rand() / (RAND_MAX + 1.0) * 0xFF) & NN;
-    REGISTER(VX) = (uint8_t)(rnd() % 0xFF) & NN;
+DEFINE_CALL(CXNN) { REGISTER(VX) = (uint8_t)(rnd() % 0xFF) & NN; }
+
+/**
+    Draws N following bytes of address referenced by I to x,y coordinates declared in VX, VY registers.
+    Pixels wrap around display if their coordinates are greater than width & height.
+*/
+DEFINE_CALL(DXYN) {
+  uint8_t x_coord = REGISTER(VX) % GFX_WIDTH;
+  uint8_t y_coord = REGISTER(VY) % GFX_HEIGHT;
+  uint8_t has_collision_occured = 0;
+
+  for (uint8_t address_offset = 0; address_offset < N; address_offset++) {
+    /*
+        Determine y after offsetting (Wrap around to 0 if y > display height)
+    */
+    y_coord =
+        (y_coord + address_offset > GFX_HEIGHT - 1 ? address_offset - 1
+                                                   : y_coord + address_offset);
+    /*
+        Determine location of x,y in the framebuffer table
+    */
+    uint8_t first_byte = y_coord * BITMAP_BYTE_WIDTH + (uint8_t)(x_coord / 8);
+    uint8_t pixels_to_insert = MEMORY(ADDRESS_REGISTER + address_offset);
+
+    if (x_coord % 8 != 0) {
+      /*
+          If pixels don't start at leftmost bit they will wrap to the next
+          byte:
+          Example:
+          0        8
+          00000000 00000000 
+          -> insert FF at position 4, 0 will result in:
+          00001111 11110000
+      */
+      uint8_t first_byte_pixels = pixels_to_insert >> (x_coord % 8);
+      uint8_t second_byte_pixels = pixels_to_insert << (8 - (x_coord % 8));      
+      /*
+        Determine position of x+1, y in the framebuffer table
+        (wrap around if x > display width)
+      */
+      uint8_t second_byte = y_coord * BITMAP_BYTE_WIDTH +
+                            ((uint8_t)(x_coord / 8) == BITMAP_BYTE_WIDTH - 1
+                                 ? 0
+                                 : (uint8_t)(x_coord / 8) + 1);
+      /*
+        Check if there are pixels that will be changed by the XOR of new pixels
+      */
+      has_collision_occured =
+          IS_COLLISION(FRAMEBUFFER(first_byte), first_byte_pixels) ||
+          IS_COLLISION(FRAMEBUFFER(second_byte), second_byte_pixels);
+      /*
+        XOR pixels in left and right framebuffer bytes
+      */
+      FRAMEBUFFER(first_byte) ^= first_byte_pixels;
+      FRAMEBUFFER(second_byte) ^= second_byte_pixels;
+    } else {
+      /*
+          If pixels start at leftmost bit they will occupy one byte:
+          Example:
+          0        8
+          00000000 00000000 
+          -> insert FF at position 0, 0 will result in:
+          11111111 00000000
+      */
+      /*
+        Check if any bits will be changed by XOR of new pixels
+      */
+      has_collision_occured =
+          IS_COLLISION(FRAMEBUFFER(first_byte), pixels_to_insert);
+      /*
+        XOR pixels into framebuffer
+      */
+      FRAMEBUFFER(first_byte) ^= pixels_to_insert;
+    }
+  }
+  REGISTER(VF) = has_collision_occured ? CARRY : NO_CARRY;
 }
 
-DEFINE_CALL(DXYN) {}
 DEFINE_CALL(EX9E) {}
 DEFINE_CALL(EXA1) {}
 DEFINE_CALL(FX07) { REGISTER(VX) = DELAY_TIMER; }
@@ -174,9 +246,13 @@ CHIP8 *init_chip8() {
     }
   }
 
+  for (int i = 0; i < BITMAP_SIZE; i++)
+    FRAMEBUFFER(i) = 0x00;
+
   PC = MEMORY_PROGRAM_START;
   ADDRESS_REGISTER = 0;
   SP = 0;
+  DELAY_TIMER = 0;
 
   pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&dump_memory);
 
@@ -216,11 +292,12 @@ int dump_registers(CHIP8 *CHIP8_POINTER) {
 int debug_registers(CHIP8 *CHIP8_POINTER) {
   printf("[%01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X "
          "%01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X %01X:%02X "
-         "%01X:%02X %01X:%02X %01X:%02X %01X:%02X]",
+         "%01X:%02X %01X:%02X %01X:%02X %01X:%02X DT:%02X I:%04X]\n",
          0, REGISTER(V0), 1, REGISTER(V1), 2, REGISTER(V2), 3, REGISTER(V3), 4,
          REGISTER(V4), 5, REGISTER(V5), 6, REGISTER(V6), 7, REGISTER(V7), 8,
          REGISTER(V8), 9, REGISTER(V9), 10, REGISTER(VA), 11, REGISTER(VB), 12,
-         REGISTER(VC), 13, REGISTER(VD), 14, REGISTER(VE), 15, REGISTER(VF));
+         REGISTER(VC), 13, REGISTER(VD), 14, REGISTER(VE), 15, REGISTER(VF),
+         DELAY_TIMER, ADDRESS_REGISTER);
 
   return 0;
 }
@@ -292,7 +369,7 @@ int run(CHIP8 *CHIP8_POINTER) {
       CALL_AND_DECODE(9XY0, buffer)
       jump = 1;
     } else if (IS_OPCODE_GROUP(A)) {
-      DECODE_ANNN(buffer);
+      CALL_AND_DECODE(ANNN, buffer);
     } else if (IS_OPCODE_GROUP(B)) {
       CALL_AND_DECODE(BNNN, buffer)
     } else if (IS_OPCODE_GROUP(C)) {
@@ -337,13 +414,13 @@ int run(CHIP8 *CHIP8_POINTER) {
 
     if (jump) {
       PC = jump;
+      jump = 0;
     } else
-      STEP
+      STEP;
 
-          if (DELAY_TIMER > 0) {
-        DELAY_TIMER--;
-      }
-    else {
+    if (DELAY_TIMER > 0) {
+      DELAY_TIMER--;
+    } else {
       DELAY_TIMER = 0;
     }
   }

@@ -41,6 +41,8 @@
 #define GFX_WIDTH 64
 #define GFX_HEIGHT 32
 #define GFX_RESOLUTION GFX_WIDTH * GFX_HEIGHT
+#define BITMAP_BYTE_WIDTH 8
+#define BITMAP_SIZE GFX_RESOLUTION / 8
 
 #define FONT_AMOUNT 16
 #define FONT_SIZE 5
@@ -62,6 +64,7 @@
 #define PC CHIP8_POINTER->pc
 #define SP CHIP8_POINTER->sp
 #define ADDRESS_REGISTER CHIP8_POINTER->I
+#define FRAMEBUFFER(xy) CHIP8_POINTER->framebuffer[xy]
 #define NNN (OPCODE_VAR & 0x0FFF)
 #define NN (OPCODE_VAR & 0x00FF)
 #define N (OPCODE_VAR & 0x000F)
@@ -70,6 +73,7 @@
 #define STEP step(CHIP8_POINTER);
 #define CARRY 1
 #define NO_CARRY 0
+#define IS_COLLISION(x, y) (x ^ y) != (x | y)
 
 #define DECODE_0NNN(buffer) sprintf(buffer, "call NNN");
 #define DECODE_00E0(buffer) sprintf(buffer, "clear_display()")
@@ -137,7 +141,7 @@ extern uint8_t chip8_font[FONT_AMOUNT][FONT_SIZE];
 typedef struct {
   uint8_t memory[MEMORY_SIZE];
   uint8_t registers[REGISTERS_AMOUNT];
-  uint8_t gfx[GFX_RESOLUTION];
+  uint8_t framebuffer[BITMAP_SIZE];
   uint8_t delay_timer;
   uint8_t sound_timer;
   uint8_t input;
@@ -146,6 +150,10 @@ typedef struct {
   uint16_t stack[STACK_SIZE];
   uint16_t sp; // stack pointer
 } CHIP8;
+
+static uint8_t xy_to_framebuffer_index(const uint8_t x, const uint8_t y) {
+    return y * BITMAP_BYTE_WIDTH + (uint8_t)(x / 8);
+}
 
 /* Declare opcode callback function type -> void F(chip8_handler, opcode) */
 typedef void (*const opcode_callback_f)(CHIP8 *, const uint16_t);
