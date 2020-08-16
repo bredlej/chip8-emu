@@ -138,8 +138,9 @@ DEFINE_CALL(BNNN) { PC = NNN + REGISTER(V0); }
 DEFINE_CALL(CXNN) { REGISTER(VX) = (uint8_t)(rnd() % 0xFF) & NN; }
 
 /**
-    Draws N following bytes of address referenced by I to x,y coordinates declared in VX, VY registers.
-    Pixels wrap around display if their coordinates are greater than width & height.
+    Draws N following bytes of address referenced by I to x,y coordinates
+   declared in VX, VY registers. Pixels wrap around display if their coordinates
+   are greater than width & height.
 */
 DEFINE_CALL(DXYN) {
   uint8_t x_coord = REGISTER(VX) % GFX_WIDTH;
@@ -152,7 +153,7 @@ DEFINE_CALL(DXYN) {
     */
     y_coord =
         (y_coord + address_offset > GFX_HEIGHT - 1 ? address_offset - 1
-                                                   : y_coord + address_offset);
+                                                   : (REGISTER(VY) % GFX_HEIGHT) + address_offset );
     /*
         Determine location of x,y in the framebuffer table
     */
@@ -165,12 +166,12 @@ DEFINE_CALL(DXYN) {
           byte:
           Example:
           0        8
-          00000000 00000000 
+          00000000 00000000
           -> insert FF at position 4, 0 will result in:
           00001111 11110000
       */
       uint8_t first_byte_pixels = pixels_to_insert >> (x_coord % 8);
-      uint8_t second_byte_pixels = pixels_to_insert << (8 - (x_coord % 8));      
+      uint8_t second_byte_pixels = pixels_to_insert << (8 - (x_coord % 8));
       /*
         Determine position of x+1, y in the framebuffer table
         (wrap around if x > display width)
@@ -195,7 +196,7 @@ DEFINE_CALL(DXYN) {
           If pixels start at leftmost bit they will occupy one byte:
           Example:
           0        8
-          00000000 00000000 
+          00000000 00000000
           -> insert FF at position 0, 0 will result in:
           11111111 00000000
       */
@@ -254,6 +255,8 @@ CHIP8 *init_chip8() {
   SP = 0;
   DELAY_TIMER = 0;
 
+  sprintf(INSTRUCTION_BUFFER, "");
+
   pcg32_srandom_r(&rng, time(NULL) ^ (intptr_t)&printf, (intptr_t)&dump_memory);
 
   return CHIP8_POINTER;
@@ -309,120 +312,212 @@ uint16_t fetch_opcode(CHIP8 *CHIP8_POINTER) {
   return opcode;
 }
 
+uint16_t fetch_opcode_at(CHIP8 *CHIP8_POINTER, uint16_t address) {
+  uint16_t opcode = (uint16_t)MEMORY(address) << 8;
+  opcode |= MEMORY(address + 1);
+
+  return opcode;
+}
+
 void step(CHIP8 *CHIP8_POINTER) { PC = PC + 2; }
+
+void decode_opcode_at(CHIP8 *chip8_p, uint16_t address, char *buffer) {
+  DECLARE_OPCODE_VAR;
+  OPCODE_VAR = fetch_opcode_at(CHIP8_POINTER, address);
+
+  if (IS_OPCODE_GROUP(0)) {
+    if (NN == 0x00E0) {
+      DECODE_00E0(buffer);
+    } else if (NN == 0x00EE) {
+      DECODE_00EE(buffer);
+    } else {
+      DECODE_0NNN(buffer)
+    }
+  } else if (IS_OPCODE_GROUP(1)) {
+    DECODE_1NNN(buffer);
+  } else if (IS_OPCODE_GROUP(2)) {
+    DECODE_2NNN(buffer);
+  } else if (IS_OPCODE_GROUP(3)) {
+    DECODE_3XNN(buffer);
+  } else if (IS_OPCODE_GROUP(4)) {
+    DECODE_4XNN(buffer);
+  } else if (IS_OPCODE_GROUP(5)) {
+    DECODE_5XY0(buffer);
+  } else if (IS_OPCODE_GROUP(6)) {
+    DECODE_6XNN(buffer);
+  } else if (IS_OPCODE_GROUP(7)) {
+    DECODE_7XNN(buffer);
+  } else if (IS_OPCODE_GROUP(8)) {
+    if (N == 0x0000) {
+      DECODE_8XY0(buffer);
+    } else if (N == 0x0001) {
+      DECODE_8XY1(buffer);
+    } else if (N == 0x0002) {
+      DECODE_8XY2(buffer);
+    } else if (N == 0x0003) {
+      DECODE_8XY3(buffer);
+    } else if (N == 0x0004) {
+      DECODE_8XY4(buffer);
+    } else if (N == 0x0005) {
+      DECODE_8XY5(buffer);
+    } else if (N == 0x0006) {
+      DECODE_8XY6(buffer);
+    } else if (N == 0x0007) {
+      DECODE_8XY7(buffer);
+    } else if (N == 0x000E) {
+      DECODE_8XYE(buffer);
+    }
+  } else if (IS_OPCODE_GROUP(9)) {
+    DECODE_9XY0(buffer);
+
+  } else if (IS_OPCODE_GROUP(A)) {
+    DECODE_ANNN(buffer);
+  } else if (IS_OPCODE_GROUP(B)) {
+    DECODE_BNNN(buffer);
+  } else if (IS_OPCODE_GROUP(C)) {
+    DECODE_CXNN(buffer);
+  } else if (IS_OPCODE_GROUP(D)) {
+    DECODE_DXYN(buffer);
+  } else if (IS_OPCODE_GROUP(E)) {
+    if (NN == 0x009E) {
+      DECODE_EX9E(buffer);
+    } else if (NN == 0x00A1) {
+      DECODE_EXA1(buffer);
+    }
+  } else if (IS_OPCODE_GROUP(F)) {
+    if (NN == 0x0007) {
+      DECODE_FX07(buffer);
+    } else if (NN == 0x000A) {
+      DECODE_FX0A(buffer);
+    } else if (NN == 0x0015) {
+      DECODE_FX15(buffer);
+    } else if (NN == 0x0018) {
+      DECODE_FX18(buffer);
+    } else if (NN == 0x001E) {
+      DECODE_FX1E(buffer);
+    } else if (NN == 0x0029) {
+      DECODE_FX29(buffer);
+    } else if (NN == 0x0033) {
+      DECODE_FX33(buffer);
+    } else if (NN == 0x0055) {
+      DECODE_FX55(buffer);
+    } else if (NN == 0x0065) {
+      DECODE_FX65(buffer);
+    }
+  } else {
+    sprintf(buffer, "");
+  }
+}
 
 int run(CHIP8 *CHIP8_POINTER) {
 
-  DECLARE_OPCODE_VAR
-  char buffer[50];
-  DELAY_TIMER = 0x3C;
-
+  DECLARE_OPCODE_VAR;
   uint16_t jump = 0;
 
-  for (PC = MEMORY_PROGRAM_START; PC < MEMORY_SIZE;) {
-    OPCODE_VAR = fetch_opcode(CHIP8_POINTER);
+  OPCODE_VAR = fetch_opcode(CHIP8_POINTER);
 
-    if (IS_OPCODE_GROUP(0)) {
-      if (NN == 0x00E0) {
-        DECODE_00E0(buffer);
-      } else if (NN == 0x00EE) {
-        DECODE_00EE(buffer);
-      } else {
-        DECODE_0NNN(buffer)
-      }
-    } else if (IS_OPCODE_GROUP(1)) {
-      CALL_AND_DECODE(1NNN, buffer)
-      jump = NNN;
-    } else if (IS_OPCODE_GROUP(2)) {
-      DECODE_2NNN(buffer);
-    } else if (IS_OPCODE_GROUP(3)) {
-      CALL_AND_DECODE(3XNN, buffer)
-    } else if (IS_OPCODE_GROUP(4)) {
-      CALL_AND_DECODE(4XNN, buffer)
-    } else if (IS_OPCODE_GROUP(5)) {
-      CALL_AND_DECODE(5XY0, buffer)
-    } else if (IS_OPCODE_GROUP(6)) {
-      CALL_AND_DECODE(6XNN, buffer)
-    } else if (IS_OPCODE_GROUP(7)) {
-      CALL_AND_DECODE(7XNN, buffer)
-    } else if (IS_OPCODE_GROUP(8)) {
-      if (N == 0x0000) {
-        CALL_AND_DECODE(8XY0, buffer)
-      } else if (N == 0x0001) {
-        CALL_AND_DECODE(8XY1, buffer)
-      } else if (N == 0x0002) {
-        CALL_AND_DECODE(8XY2, buffer)
-      } else if (N == 0x0003) {
-        CALL_AND_DECODE(8XY3, buffer)
-      } else if (N == 0x0004) {
-        CALL_AND_DECODE(8XY4, buffer)
-      } else if (N == 0x0005) {
-        CALL_AND_DECODE(8XY5, buffer)
-      } else if (N == 0x0006) {
-        DECODE_8XY6(buffer);
-      } else if (N == 0x0007) {
-        CALL_AND_DECODE(8XY7, buffer)
-      } else if (N == 0x000E) {
-        DECODE_8XYE(buffer);
-      }
-    } else if (IS_OPCODE_GROUP(9)) {
-      CALL_AND_DECODE(9XY0, buffer)
-      jump = 1;
-    } else if (IS_OPCODE_GROUP(A)) {
-      CALL_AND_DECODE(ANNN, buffer);
-    } else if (IS_OPCODE_GROUP(B)) {
-      CALL_AND_DECODE(BNNN, buffer)
-    } else if (IS_OPCODE_GROUP(C)) {
-      CALL_AND_DECODE(CXNN, buffer)
-    } else if (IS_OPCODE_GROUP(D)) {
-      DECODE_DXYN(buffer);
-    } else if (IS_OPCODE_GROUP(E)) {
-      if (NN == 0x009E) {
-        DECODE_EX9E(buffer);
-      } else if (NN == 0x00A1) {
-        DECODE_EXA1(buffer);
-      }
-    } else if (IS_OPCODE_GROUP(F)) {
-      if (NN == 0x0007) {
-        CALL_AND_DECODE(FX07, buffer)
-      } else if (NN == 0x000A) {
-        DECODE_FX0A(buffer);
-      } else if (NN == 0x0015) {
-        CALL_AND_DECODE(FX15, buffer)
-      } else if (NN == 0x0018) {
-        DECODE_FX18(buffer);
-      } else if (NN == 0x001E) {
-        DECODE_FX1E(buffer);
-      } else if (NN == 0x0029) {
-        DECODE_FX29(buffer);
-      } else if (NN == 0x0033) {
-        DECODE_FX33(buffer);
-      } else if (NN == 0x0055) {
-        DECODE_FX55(buffer);
-      } else if (NN == 0x0065) {
-        DECODE_FX65(buffer);
-      }
+  if (IS_OPCODE_GROUP(0)) {
+    if (NN == 0x00E0) {
+      DECODE_00E0(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x00EE) {
+      DECODE_00EE(CHIP8_POINTER->instruction_buffer);
     } else {
-      sprintf(buffer, "");
+      DECODE_0NNN(CHIP8_POINTER->instruction_buffer)
     }
-
-    if (OPCODE_VAR != 0x0000) {
-      printf("[$%04X]: %04X --> %s ", PC, OPCODE_VAR, buffer);
-      debug_registers(CHIP8_POINTER);
-      printf("\n");
+  } else if (IS_OPCODE_GROUP(1)) {
+    CALL_AND_DECODE(1NNN, CHIP8_POINTER->instruction_buffer)
+    jump = NNN;
+  } else if (IS_OPCODE_GROUP(2)) {
+    DECODE_2NNN(CHIP8_POINTER->instruction_buffer);
+  } else if (IS_OPCODE_GROUP(3)) {
+    CALL_AND_DECODE(3XNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(4)) {
+    CALL_AND_DECODE(4XNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(5)) {
+    CALL_AND_DECODE(5XY0, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(6)) {
+    CALL_AND_DECODE(6XNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(7)) {
+    CALL_AND_DECODE(7XNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(8)) {
+    if (N == 0x0000) {
+      CALL_AND_DECODE(8XY0, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0001) {
+      CALL_AND_DECODE(8XY1, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0002) {
+      CALL_AND_DECODE(8XY2, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0003) {
+      CALL_AND_DECODE(8XY3, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0004) {
+      CALL_AND_DECODE(8XY4, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0005) {
+      CALL_AND_DECODE(8XY5, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x0006) {
+      CALL_AND_DECODE(8XY6, CHIP8_POINTER->instruction_buffer);
+    } else if (N == 0x0007) {
+      CALL_AND_DECODE(8XY7, CHIP8_POINTER->instruction_buffer)
+    } else if (N == 0x000E) {
+      CALL_AND_DECODE(8XYE, CHIP8_POINTER->instruction_buffer);
     }
-
-    if (jump) {
-      PC = jump;
-      jump = 0;
-    } else
-      STEP;
-
-    if (DELAY_TIMER > 0) {
-      DELAY_TIMER--;
-    } else {
-      DELAY_TIMER = 0;
+  } else if (IS_OPCODE_GROUP(9)) {
+    CALL_AND_DECODE(9XY0, CHIP8_POINTER->instruction_buffer)
+    jump = 1;
+  } else if (IS_OPCODE_GROUP(A)) {
+    CALL_AND_DECODE(ANNN, CHIP8_POINTER->instruction_buffer);
+  } else if (IS_OPCODE_GROUP(B)) {
+    CALL_AND_DECODE(BNNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(C)) {
+    CALL_AND_DECODE(CXNN, CHIP8_POINTER->instruction_buffer)
+  } else if (IS_OPCODE_GROUP(D)) {
+    CALL_AND_DECODE(DXYN, CHIP8_POINTER->instruction_buffer);
+  } else if (IS_OPCODE_GROUP(E)) {
+    if (NN == 0x009E) {
+      DECODE_EX9E(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x00A1) {
+      DECODE_EXA1(CHIP8_POINTER->instruction_buffer);
     }
+  } else if (IS_OPCODE_GROUP(F)) {
+    if (NN == 0x0007) {
+      CALL_AND_DECODE(FX07, CHIP8_POINTER->instruction_buffer)
+    } else if (NN == 0x000A) {
+      DECODE_FX0A(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x0015) {
+      CALL_AND_DECODE(FX15, CHIP8_POINTER->instruction_buffer)
+    } else if (NN == 0x0018) {
+      DECODE_FX18(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x001E) {
+      DECODE_FX1E(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x0029) {
+      DECODE_FX29(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x0033) {
+      DECODE_FX33(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x0055) {
+      DECODE_FX55(CHIP8_POINTER->instruction_buffer);
+    } else if (NN == 0x0065) {
+      DECODE_FX65(CHIP8_POINTER->instruction_buffer);
+    }
+  } else {
+    sprintf(CHIP8_POINTER->instruction_buffer, "");
   }
+
+  if (OPCODE_VAR != 0x0000) {
+    printf("[$%04X]: %04X --> %s ", PC, OPCODE_VAR,
+           CHIP8_POINTER->instruction_buffer);
+    debug_registers(CHIP8_POINTER);
+    printf("\n");
+  }
+
+  if (jump) {
+    PC = jump;
+    jump = 0;
+  } else
+    STEP;
+
+  if (DELAY_TIMER > 0) {
+    DELAY_TIMER--;
+  } else {
+    DELAY_TIMER = 0;
+  }
+  //}
   return 0;
 }

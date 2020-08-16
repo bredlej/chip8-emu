@@ -65,6 +65,7 @@
 #define SP CHIP8_POINTER->sp
 #define ADDRESS_REGISTER CHIP8_POINTER->I
 #define FRAMEBUFFER(xy) CHIP8_POINTER->framebuffer[xy]
+#define INSTRUCTION_BUFFER CHIP8_POINTER->instruction_buffer
 #define NNN (OPCODE_VAR & 0x0FFF)
 #define NN (OPCODE_VAR & 0x00FF)
 #define N (OPCODE_VAR & 0x000F)
@@ -149,6 +150,7 @@ typedef struct {
   uint16_t pc; // program counter
   uint16_t stack[STACK_SIZE];
   uint16_t sp; // stack pointer
+  char instruction_buffer[50];
 } CHIP8;
 
 static uint8_t xy_to_framebuffer_index(const uint8_t x, const uint8_t y) {
@@ -175,6 +177,7 @@ enum opcodes_order_e { CHIP8_INSTR_SET };
 
 CHIP8 *init_chip8(void);
 uint16_t fetch_opcode(CHIP8*);
+uint16_t fetch_opcode_at(CHIP8*, uint16_t);
 int free_memory(CHIP8 *);
 int dump_memory(CHIP8 *);
 int dump_registers(CHIP8 *);
