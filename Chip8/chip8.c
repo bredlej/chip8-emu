@@ -143,8 +143,8 @@ DEFINE_CALL(CXNN) { REGISTER(VX) = (uint8_t)(rnd() % 0xFF) & NN; }
    are greater than width & height.
 */
 DEFINE_CALL(DXYN) {
-  uint8_t x_coord = REGISTER(VX) % GFX_WIDTH;
-  uint8_t y_coord = REGISTER(VY) % GFX_HEIGHT;
+  uint16_t x_coord = REGISTER(VX) % GFX_WIDTH;
+  uint16_t y_coord = REGISTER(VY) % GFX_HEIGHT;
   uint8_t has_collision_occured = 0;
 
   for (uint8_t address_offset = 0; address_offset < N; address_offset++) {
@@ -152,7 +152,7 @@ DEFINE_CALL(DXYN) {
         Determine y after offsetting (Wrap around to 0 if y > display height)
     */
     y_coord =
-        (y_coord + address_offset > GFX_HEIGHT - 1 ? address_offset - 1
+        (REGISTER(VY) + address_offset > GFX_HEIGHT ? address_offset - 1
                                                    : (REGISTER(VY) % GFX_HEIGHT) + address_offset );
     /*
         Determine location of x,y in the framebuffer table

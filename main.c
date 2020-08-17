@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void render_framebuffer(CHIP8 *chip8_p, SDL_Renderer *renderer, uint16_t x,
-                        uint16_t y) {
+void render_framebuffer(CHIP8 *chip8_p, SDL_Renderer *renderer, FC_Font *font,
+                        uint16_t x, uint16_t y, uint8_t is_debug) {
   for (int i = 0; i < BITMAP_SIZE; i++) {
     for (uint8_t bit_offset = 0; bit_offset < 8; bit_offset++) {
       SDL_Rect r;
@@ -18,16 +18,43 @@ void render_framebuffer(CHIP8 *chip8_p, SDL_Renderer *renderer, uint16_t x,
         SDL_SetRenderDrawColor(renderer, 225, 225, 225, 255);
         SDL_RenderFillRect(renderer, &r);
       } else {
-          if ((0x80 >> bit_offset & 1) == 1 || i % 64 == 0) {
-              SDL_SetRenderDrawColor(renderer, 25, 75, 25, 255);
+        if (is_debug) {
+          if ((0x80 >> bit_offset & 1) == 1 && (i * 8) % 8 == 0) {
+            SDL_SetRenderDrawColor(renderer, 25, 75, 25, 255);
+          } else {
+            SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
           }
-          else {
-              SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
+          if (!(0x1 >> bit_offset & 1) == 1) {
+            SDL_RenderDrawRect(renderer, &r);
+          } else {
+            FC_Draw(font, renderer, r.x, r.y - 2, "%02X", i);
           }
-        
+        }
+      }
+    }
+  }
+}
+void render_sprite_preview(CHIP8 *chip8_p, SDL_Renderer *renderer,
+                           FC_Font *font, uint16_t x, uint16_t y) {
+  FC_Draw(font, renderer, x + 5, y + 5, "Sprite");
+  for (uint16_t sprite_address = chip8_p->I; sprite_address < chip8_p->I + 16;
+       sprite_address++) {
+    uint16_t sprite = chip8_p->memory[sprite_address];
+    for (uint8_t bit_offset = 0; bit_offset < 8; bit_offset++) {
+      SDL_Rect r;
+      r.x = x + (bit_offset * 10);
+      r.y = y + 35;
+      r.w = 10;
+      r.h = 10;
+      if (((0x80 >> bit_offset) & sprite) > 0) {
+        SDL_SetRenderDrawColor(renderer, 225, 225, 225, 255);
+        SDL_RenderFillRect(renderer, &r);
+      } else {
+        SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
         SDL_RenderDrawRect(renderer, &r);
       }
     }
+    y = y + 10;
   }
 }
 void render_instructions(CHIP8 *chip8_p, SDL_Renderer *renderer, FC_Font *font,
@@ -134,8 +161,9 @@ int main(int argc, char **argv) {
 
   SDL_Init(SDL_INIT_VIDEO);
 
-  SDL_Window *window = SDL_CreateWindow("Bredlej's Chip8 emulator", SDL_WINDOWPOS_UNDEFINED,
-                                        SDL_WINDOWPOS_UNDEFINED, 1200, 600, 0);
+  SDL_Window *window =
+      SDL_CreateWindow("Bredlej's Chip8 emulator", SDL_WINDOWPOS_UNDEFINED,
+                       SDL_WINDOWPOS_UNDEFINED, 1200, 600, 0);
 
   SDL_Renderer *renderer =
       SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
@@ -143,6 +171,9 @@ int main(int argc, char **argv) {
 
   FC_Font *font = FC_CreateFont();
   FC_LoadFont(font, renderer, "fonts/basis33.ttf", 24,
+              FC_MakeColor(230, 230, 230, 255), TTF_STYLE_NORMAL);
+  FC_Font *font_debug = FC_CreateFont();
+  FC_LoadFont(font_debug, renderer, "fonts/FreeSans.ttf", 10,
               FC_MakeColor(230, 230, 230, 255), TTF_STYLE_NORMAL);
   FC_Font *font_grey = FC_CreateFont();
   FC_LoadFont(font_grey, renderer, "fonts/basis33.ttf", 24,
@@ -156,9 +187,9 @@ int main(int argc, char **argv) {
   SDL_Event event;
   PC = MEMORY_PROGRAM_START;
   DELAY_TIMER = 0x01;
-  
+
   uint8_t is_debug = 0;
-  
+
   while (!quit) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 
@@ -173,10 +204,10 @@ int main(int argc, char **argv) {
     case SDLK_LEFT: {
       if (event.key.state == SDL_PRESSED) {
         //
-          if (is_debug) {
-              run(CHIP8_POINTER);
-              SDL_Delay(100);
-          }        
+        if (is_debug) {
+          run(CHIP8_POINTER);
+          SDL_Delay(100);
+        }
       }
       break;
     }
@@ -187,20 +218,24 @@ int main(int argc, char **argv) {
     case SDLK_DOWN:
       break;
     case SDLK_SPACE: {
-        if (event.key.state == SDL_PRESSED) {
-            //
-            is_debug = is_debug ? 0 : 1;
-        }
+      if (event.key.state == SDL_PRESSED) {
+        //
+        is_debug = is_debug ? 0 : 1;
+      }
 
       break;
     }
     }
     if (!is_debug) {
-        run(CHIP8_POINTER);
-    }        
-    render_registers(CHIP8_POINTER, renderer, font, font_grey, 690, 340);
+      run(CHIP8_POINTER);
+    }
+    else {
+        FC_Draw(font, renderer, 280, 400, "Debug mode");
+    }
+    render_registers(CHIP8_POINTER, renderer, font, font_grey, 690, 320);
+    render_sprite_preview(CHIP8_POINTER, renderer, font_grey, 1050, 320);
     render_instructions(CHIP8_POINTER, renderer, font, font_grey, 690, 50);
-    render_framebuffer(CHIP8_POINTER, renderer, 20, 50);
+    render_framebuffer(CHIP8_POINTER, renderer, font_debug, 20, 50, is_debug);
     SDL_RenderPresent(renderer);
   }
   dump_registers(CHIP8_POINTER);

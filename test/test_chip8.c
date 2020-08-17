@@ -393,26 +393,21 @@ void test_Instruction_DXYN() {
   REGISTER(V0) = 0x00;
   REGISTER(V1) = 0x04;
   REGISTER(VF) = 0x00;
-  MEMORY(0x900 + 0) = 0xFF;
-  MEMORY(0x900 + 1) = 0xFF;
-  MEMORY(0x900 + 2) = 0xFF;
+  for (uint8_t i = 0; i < 0x0F; i++) {
+      MEMORY(0x900 + i) = 0xFF;
+  }  
   ADDRESS_REGISTER = 0x900;
-  f_DXYN(CHIP8_POINTER, 0xD013);
-  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
-      0xFF, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
-      "(1 byte) Framebuffer wrong sprite set from I+0");
-  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
-      0xFF,
-      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1) + 1)),
-      "(1 byte) Framebuffer wrong sprite set from I+1");
-  TEST_ASSERT_EQUAL_HEX8_MESSAGE(
-      0xFF,
-      FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1) + 2)),
-      "(1 byte) Framebuffer wrong sprite set from I+2");
+  f_DXYN(CHIP8_POINTER, 0xD01F);
+  for (uint8_t i = 0; i < 0x0F; i++) {
+      printf("   (1byte) %d\n", i);
+      TEST_ASSERT_EQUAL_HEX8_MESSAGE(
+          0xFF, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1) + i)),
+          "(1 byte) Framebuffer wrong sprite set from I");
+  }
   TEST_ASSERT_EQUAL_HEX8_MESSAGE(
       0x00, REGISTER(VF),
       "(1 byte) Registered pixel collision but there was none");
-  f_DXYN(CHIP8_POINTER, 0xD012);
+  f_DXYN(CHIP8_POINTER, 0xD01F);
   TEST_ASSERT_EQUAL_HEX8_MESSAGE(
       0x00, FRAMEBUFFER(xy_to_framebuffer_index(REGISTER(V0), REGISTER(V1))),
       "(1 byte) Framebuffer sprite did not clear pixels unerneath");
