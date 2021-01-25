@@ -202,13 +202,6 @@ int main(int argc, char **argv) {
     }
     switch (event.key.keysym.sym) {
     case SDLK_LEFT: {
-      if (event.key.state == SDL_PRESSED) {
-        //
-        if (is_debug) {
-          run(CHIP8_POINTER);
-          SDL_Delay(100);
-        }
-      }
       break;
     }
     case SDLK_RIGHT:
@@ -216,6 +209,13 @@ int main(int argc, char **argv) {
     case SDLK_UP:
       break;
     case SDLK_DOWN:
+      if (event.key.state == SDL_PRESSED) {
+        //
+        if (is_debug) {
+          run(CHIP8_POINTER);
+          SDL_Delay(100);
+        }
+      }
       break;
     case SDLK_SPACE: {
       if (event.key.state == SDL_PRESSED) {
